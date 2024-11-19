@@ -1,22 +1,35 @@
 // src/services/warmup-scheduler.service.ts
 import { CacheWarmupService } from './cache-warmup.service';
+import { CacheService } from './cache.service';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { RecipeService } from './recipe.service';
 
 export class WarmupSchedulerService {
   private warmupService: CacheWarmupService;
   private intervalId: NodeJS.Timer | null = null;
 
   constructor(
-    supabase: SupabaseClient,
+    private cacheService: CacheService,
+    private supabase: SupabaseClient,
+    private recipeService: RecipeService,
     private config: {
-      initialDelay: number; // 服务启动后多久开始第一次预热（毫秒）
-      warmupInterval: number; // 预热间隔（分钟）
+      initialDelay: number;
+      warmupInterval: number;
       popularRecipeCount: number;
       recentRecipeCount: number;
       popularCuisineTypes: string[];
     }
   ) {
-    this.warmupService = new CacheWarmupService(supabase, config);
+    this.warmupService = new CacheWarmupService(
+      this.supabase,
+      this.cacheService,
+      this.recipeService,
+      {
+        popularRecipeCount: config.popularRecipeCount,
+        recentRecipeCount: config.recentRecipeCount,
+        popularCuisineTypes: config.popularCuisineTypes,
+      }
+    );
   }
 
   // 启动调度器
@@ -45,8 +58,8 @@ export class WarmupSchedulerService {
   }
 
   // 获取预热状态
-  getStatus() {
-    return this.warmupService.getWarmupStatus();
+  async getStatus() {
+    return await this.warmupService.getWarmupStatus();
   }
 
   // 手动触发预热

@@ -31,7 +31,7 @@ const createRecipeSchema = z.object({
   nutrition_facts: z.object({
     protein: z.number(),
     carbs: z.number(),
-    fat: z.number(),·
+    fat: z.number(),
     fiber: z.number(),
   }),
   cuisine_type: z.string(),
@@ -47,7 +47,7 @@ app.get('/', async (c) => {
     const filters: RecipeFilters = {
       cuisineType: c.req.query('cuisineType'),
       maxCookingTime: c.req.query('maxCookingTime')
-        ? parseInt(c.req.query('maxCookingTime'))
+        ? parseInt(c.req.query('maxCookingTime') ?? '')
         : undefined,
       dietType: c.req.query('dietType')?.split(','),
     };

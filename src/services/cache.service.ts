@@ -2,14 +2,20 @@
 import { Redis } from '@upstash/redis';
 import { Recipe, MealPlan } from '../types';
 
+interface CacheOptions {
+  ex?: number;
+  nx?: boolean;
+}
+
 export class CacheService {
   private redis: Redis;
-  private DEFAULT_TTL = 60 * 60; // 1小时的缓存时间
+  private lastWarmupTime: Date | null = null;
+  private totalCachedRecipes = 0;
 
   constructor() {
     this.redis = new Redis({
-      url: process.env.UPSTASH_REDIS_URL!,
-      token: process.env.UPSTASH_REDIS_TOKEN!,
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     });
   }
 
@@ -30,15 +36,19 @@ export class CacheService {
   }
 
   // 设置缓存
-  async set(
-    key: string,
-    value: any,
-    ttl: number = this.DEFAULT_TTL
-  ): Promise<void> {
+  async set(key: string, value: any, options?: CacheOptions): Promise<void> {
     try {
-      await this.redis.set(key, value, { ex: ttl });
+      if (options?.ex) {
+        await this.redis.set(key, value, { ex: options.ex });
+      } else if (options?.nx) {
+        await this.redis.set(key, value, { nx: true });
+      } else {
+        await this.redis.set(key, value);
+      }
+      this.totalCachedRecipes++;
     } catch (error) {
       console.error('Cache set error:', error);
+      throw error;
     }
   }
 
@@ -46,6 +56,7 @@ export class CacheService {
   async del(key: string): Promise<void> {
     try {
       await this.redis.del(key);
+      this.totalCachedRecipes--;
     } catch (error) {
       console.error('Cache delete error:', error);
     }
@@ -117,5 +128,60 @@ export class CacheService {
       this.generateKey(`meal-plans:${userId}`, dateKey),
       mealPlans
     );
+  }
+
+  async flushAll(): Promise<void> {
+    try {
+      await this.redis.flushall();
+      this.totalCachedRecipes = 0;
+    } catch (error) {
+      console.error('Error flushing cache:', error);
+      throw error;
+    }
+  }
+
+  async getCacheSize(): Promise<number> {
+    try {
+      // 获取所有键
+      const keys = await this.redis.keys('*');
+
+      // 如果没有键，返回0
+      if (!keys.length) return 0;
+
+      // 获取所有键的内存使用情况
+      const sizes = await Promise.all(
+        keys.map(async (key) => {
+          const value = await this.redis.get(key);
+          // 计算字符串形式的值的近似内存使用
+          return value ? JSON.stringify(value).length : 0;
+        })
+      );
+
+      // 计算总大小（字节）
+      return sizes.reduce((total, size) => total + size, 0);
+    } catch (error) {
+      console.error('Error getting cache size:', error);
+      return 0;
+    }
+  }
+
+  async setLastWarmupTime(time: Date): Promise<void> {
+    await this.set('lastWarmupTime', time.toISOString(), {
+      ex: 86400 * 30, // 30 days expiration
+    });
+  }
+
+  async getLastWarmupTime(): Promise<Date | null> {
+    const timeStr = await this.get<string>('lastWarmupTime');
+    return timeStr ? new Date(timeStr) : null;
+  }
+
+  getTotalCachedRecipes(): number {
+    return this.totalCachedRecipes;
+  }
+
+  // 不需要显式关闭连接，因为使用的是 REST API
+  async close(): Promise<void> {
+    // REST API 不需要关闭连接
   }
 }

@@ -9,17 +9,31 @@ import { recipeRoutes } from './routes/recipe.routes';
 import { mealPlanRoutes } from './routes/meal-plan.routes';
 import { supabase } from './config/supabase';
 import { WarmupSchedulerService } from './services/warmup-scheduler.service';
+import { recommendationRoutes } from './routes/recommendation.routes';
+import { userRoutes } from './routes/user.routes';
+import { PreferenceValidationError } from './types/errors';
+import { CacheService } from './services/cache.service';
+import { RecipeService } from './services/recipe.service';
 
 const app = new Hono();
 
+// 创建必要的服务实例
+const cacheService = new CacheService();
+const recipeService = new RecipeService(supabase);
+
 // 创建预热调度器
-const warmupScheduler = new WarmupSchedulerService(supabase, {
-  initialDelay: 5000, // 服务启动5秒后开始预热
-  warmupInterval: 30, // 每30分钟预热一次
-  popularRecipeCount: 50, // 预热50个热门食谱
-  recentRecipeCount: 30, // 预热30个最新食谱
-  popularCuisineTypes: ['chinese', 'western', 'japanese', 'korean'], // 热门菜系
-});
+const warmupScheduler = new WarmupSchedulerService(
+  cacheService,
+  supabase,
+  recipeService,
+  {
+    initialDelay: 5000, // 服务启动5秒后开始预热
+    warmupInterval: 30, // 每30分钟预热一次
+    popularRecipeCount: 50, // 预热50个热门食谱
+    recentRecipeCount: 30, // 预热30个最新食谱
+    popularCuisineTypes: ['chinese', 'western', 'japanese', 'korean'], // 热门菜系
+  }
+);
 
 // 启动预热调度器
 warmupScheduler.start();
@@ -43,11 +57,13 @@ app.get('/health', (c) => c.json({ status: 'ok' }));
 // API路由
 const api = new Hono();
 
-// 公开路由 - 使用可选认证
-api.use('/recipes', optionalAuthMiddleware);
+// 公开路由
 api.route('/recipes', recipeRoutes);
+api.route('/recommendations', recommendationRoutes);
 
 // 需要认证的路由
+api.use('/users/*', authMiddleware);
+api.route('/users', userRoutes);
 api.use('/meal-plans/*', authMiddleware);
 api.route('/meal-plans', mealPlanRoutes);
 
@@ -63,9 +79,11 @@ app.post('/api/admin/cache/warmup', async (c) => {
 });
 
 // 优雅关闭
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM received. Stopping warmup scheduler...');
   warmupScheduler.stop();
+  console.log('SIGTERM received. Closing Redis connection...');
+  await cacheService.close();
 });
 
 // 认证相关的路由处理
@@ -152,6 +170,17 @@ app.onError((err, c) => {
         code: err.status,
       },
       err.status
+    );
+  }
+
+  if (err instanceof PreferenceValidationError) {
+    return c.json(
+      {
+        message: err.message,
+        code: 400,
+        details: err.details,
+      },
+      400
     );
   }
 

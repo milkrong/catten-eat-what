@@ -45,8 +45,4 @@ export interface MealPlan {
   updated_at: string;
 }
 
-export interface RecipeFilters {
-  cuisineType?: string;
-  maxCookingTime?: number;
-  dietType?: string[];
-}
+export * from './recipe';

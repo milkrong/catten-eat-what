@@ -1,0 +1,199 @@
+@baseUrl = http://localhost:3000/api
+@authToken = your_jwt_token_here
+@recipeId = 123456
+@mealPlanId = 123456
+### 食谱相关接口 ###
+
+### 获取食谱列表
+GET {{baseUrl}}/recipes
+Content-Type: application/json
+
+### 获取食谱列表（带过滤）
+GET {{baseUrl}}/recipes?cuisineType=chinese&maxCookingTime=30&dietType=vegetarian,keto
+Content-Type: application/json
+
+### 获取单个食谱
+GET {{baseUrl}}/recipes/{{recipeId}}
+Content-Type: application/json
+
+### 创建食谱
+POST {{baseUrl}}/recipes
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "宫保鸡丁",
+  "description": "一道经典的川菜",
+  "ingredients": [
+    {
+      "name": "鸡胸肉",
+      "amount": 300,
+      "unit": "g"
+    },
+    {
+      "name": "花生",
+      "amount": 50,
+      "unit": "g"
+    }
+  ],
+  "steps": [
+    {
+      "order": 1,
+      "description": "鸡肉切丁"
+    },
+    {
+      "order": 2,
+      "description": "腌制调味"
+    }
+  ],
+  "calories": 450,
+  "cooking_time": 30,
+  "nutrition_facts": {
+    "protein": 25,
+    "carbs": 30,
+    "fat": 15,
+    "fiber": 3
+  },
+  "cuisine_type": "chinese",
+  "diet_type": ["spicy", "high_protein"]
+}
+
+### 更新食谱
+PUT {{baseUrl}}/recipes/{{recipeId}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "改良版宫保鸡丁",
+  "description": "更健康的版本",
+  "cooking_time": 25
+  // ... 其他字段同创建食谱
+}
+
+### 删除食谱
+DELETE {{baseUrl}}/recipes/{{recipeId}}
+Authorization: Bearer {{authToken}}
+
+### 膳食计划相关接口 ###
+
+### 获取用户膳食计划
+GET {{baseUrl}}/meal-plans?startDate=2024-03-01T00:00:00Z&endDate=2024-03-07T23:59:59Z
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+### 创建单个膳食计划
+POST {{baseUrl}}/meal-plans
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "date": "2024-03-01T12:00:00Z",
+  "meal_type": "lunch",
+  "recipe_id": "recipe-uuid-here"
+}
+
+### 生成膳食计划
+POST {{baseUrl}}/meal-plans/generate
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "startDate": "2024-03-01T00:00:00Z",
+  "endDate": "2024-03-07T23:59:59Z",
+  "preferences": {
+    "cuisineTypes": ["chinese", "japanese"],
+    "dietTypes": ["vegetarian"],
+    "maxCookingTime": 45,
+    "caloriesPerDay": 2000
+  }
+}
+
+### 更新膳食计划
+PUT {{baseUrl}}/meal-plans/{{mealPlanId}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "date": "2024-03-01T18:00:00Z",
+  "meal_type": "dinner",
+  "recipe_id": "new-recipe-uuid"
+}
+
+### 删除膳食计划
+DELETE {{baseUrl}}/meal-plans/{{mealPlanId}}
+Authorization: Bearer {{authToken}}
+
+### 用户相关接口 ###
+
+### 获取用户资料
+GET {{baseUrl}}/users/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+### 更新用户资料
+PUT {{baseUrl}}/users/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "username": "新用户名",
+  "avatar_url": "https://example.com/avatar.jpg"
+}
+
+### 获取用户收藏的食谱
+GET {{baseUrl}}/users/favorites
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+### 添加食谱到收藏
+POST {{baseUrl}}/users/favorites/{{recipeId}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+### 从收藏中移除食谱
+DELETE {{baseUrl}}/users/favorites/{{recipeId}}
+Authorization: Bearer {{authToken}}
+
+### 获取用户偏好设置
+GET {{baseUrl}}/users/preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+### 更新用户偏好设置
+PUT {{baseUrl}}/users/preferences
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "diet_type": ["vegetarian", "low_carb"],
+  "restrictions": ["peanut", "seafood"],
+  "allergies": ["dairy"],
+  "calories_min": 1800,
+  "calories_max": 2200,
+  "max_cooking_time": 45
+}
+
+### 认证相关接口 ###
+
+### 用户注册
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "your_password",
+  "username": "desired_username"
+}
+
+### 用户登录
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "your_password"
+}
+
+### 用户登出
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{authToken}}

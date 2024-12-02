@@ -4,7 +4,11 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { HTTPException } from 'hono/http-exception';
-import { authMiddleware, optionalAuthMiddleware } from './middlewares/auth';
+import {
+  authMiddleware,
+  optionalAuthMiddleware,
+  clerkMiddleware,
+} from './middlewares/auth';
 import { recipeRoutes } from './routes/recipe.routes';
 import { mealPlanRoutes } from './routes/meal-plan.routes';
 import { supabase } from './config/supabase';
@@ -14,6 +18,7 @@ import { userRoutes } from './routes/user.routes';
 import { PreferenceValidationError } from './types/errors';
 import { CacheService } from './services/cache.service';
 import { RecipeService } from './services/recipe.service';
+import authRoutes from './routes/auth';
 
 const app = new Hono();
 
@@ -50,12 +55,16 @@ app.use(
     allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
+app.use('*', clerkMiddleware());
 
 // 健康检查 - 无需认证
 app.get('/health', (c) => c.json({ status: 'ok' }));
 
 // API路由
 const api = new Hono();
+
+// 认证路由
+api.route('/auth', authRoutes);
 
 // 公开路由
 api.route('/recipes', recipeRoutes);

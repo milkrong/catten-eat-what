@@ -1,145 +1,244 @@
-# 饮食推荐 APP 设计方案
+# 猫咪吃什么 API 服务
 
-## 1. 产品需求
+基于 Bun + Hono + Supabase 构建的食谱推荐和餐饮计划 API 服务。
 
-### 1.1 核心功能
+## 技术栈
 
-- 单次饮食推荐
+- **运行时**: Bun
+- **Web 框架**: Hono
+- **数据库**: Supabase (PostgreSQL)
+- **缓存**: Redis (Upstash)
+- **认证**: Clerk
+- **测试**: Vitest
 
-  - 基于用户喜好快速推荐当前餐次的选择
-  - 支持重新生成
-  - 可以收藏喜欢的推荐结果
+## 功能特性
 
-- 食谱规划
+- 用户认证和授权 (Clerk)
+- 食谱管理和搜索
+- 个性化餐饮计划
+- 智能推荐系统
+- 用户偏好设置
+- 食谱收藏
+- 性能优化 (Redis 缓存)
 
-  - 支持生成每日/每周食谱
-  - 可设置餐次数量(2-4 餐)
-  - 支持替换单个餐次的推荐
+## API 设计
 
-- 个性化设置
+### 认证相关
 
-  - 饮食偏好(中餐/西餐/日料等)
-  - 饮食习惯(素食/低碳水/高蛋白等)
-  - 过敏源设置
-  - 卡路里需求
-  - 烹饪时间限制
+- `GET /api/auth/me` - 获取当前用户信息
+- `POST /api/auth/webhook` - Clerk Webhook 处理 (用户创建回调)
 
-- 社交功能
-  - 分享食谱到社交平台
-  - 收藏其他用户分享的食谱
-  - 评论与打分
+### 食谱相关
 
-### 1.2 辅助功能
+- `GET /api/recipes` - 获取食谱列表
+- `GET /api/recipes/:id` - 获取单个食谱
+- `POST /api/recipes` - 创建食谱 (需要认证)
+- `PUT /api/recipes/:id` - 更新食谱 (需要认证)
+- `DELETE /api/recipes/:id` - 删除食谱 (需要认证)
 
-- 食材营养成分查询
-- 烹饪步骤指导
-- 食材购买清单生成
-- 用餐提醒
-- 饮食记录与统计
+### 餐饮计划
 
-## 2. 技术架构
+- `GET /api/meal-plans` - 获取用户的餐饮计划 (需要认证)
+- `POST /api/meal-plans` - 创建餐饮计划 (需要认证)
+- `PUT /api/meal-plans/:id` - 更新餐饮计划 (需要认证)
+- `DELETE /api/meal-plans/:id` - 删除餐饮计划 (需要认证)
 
-### 2.1 前端架构 (React Native)
+### 推荐系统
 
-```
-src/
-├── components/          # 可复用组件
-│   ├── common/         # 通用UI组件
-│   └── screens/        # 页面级组件
-├── screens/            # 主要页面
-│   ├── Home/
-│   ├── Planner/
-│   ├── Profile/
-│   └── Social/
-├── navigation/         # 路由导航
-├── services/          # API服务
-├── store/             # 状态管理
-├── utils/             # 工具函数
-└── themes/            # 样式主题
-```
+- `GET /api/recommendations` - 获取推荐食谱
+- `GET /api/recommendations/personalized` - 获取个性化推荐 (需要认证)
 
-### 2.2 后端架构 (Node.js)
+### 用户偏好
 
-```
-server/
-├── src/
-│   ├── controllers/   # 业务逻辑控制器
-│   ├── models/        # 数据模型
-│   ├── routes/        # API路由
-│   ├── services/      # 业务服务
-│   │   └── ai/       # AI推荐服务
-│   └── utils/        # 工具函数
-├── config/           # 配置文件
-└── tests/           # 测试文件
-```
+- `GET /api/users/preferences` - 获取用户偏好 (需要认证)
+- `PUT /api/users/preferences` - 更新用户偏好 (需要认证)
 
-### 2.3 数据库设计
+### 收藏管理
 
-- 用户表 (users)
-- 食谱表 (recipes)
-- 用户偏好表 (preferences)
-- 食材表 (ingredients)
-- 收藏表 (favorites)
-- 评论表 (comments)
+- `GET /api/users/favorites` - 获取收藏的食谱 (需要认证)
+- `POST /api/users/favorites` - 添加收藏 (需要认证)
+- `DELETE /api/users/favorites/:recipeId` - 取消收藏 (需要认证)
 
-### 2.4 API 设计
+## 数据模型
 
-- 用户相关
+### users (Supabase)
 
-  - POST /api/auth/register
-  - POST /api/auth/login
-  - PUT /api/users/preferences
-
-- 推荐相关
-
-  - POST /api/recommendations/single
-  - POST /api/recommendations/daily
-  - POST /api/recommendations/weekly
-
-- 食谱相关
-  - GET /api/recipes
-  - POST /api/recipes
-  - GET /api/recipes/:id
-  - PUT /api/recipes/:id
-  - DELETE /api/recipes/:id
-
-### 2.5 AI 推荐系统
-
-- 使用 ChatGPT API 进行推荐
-- 示例 Prompt 模板:
-
-```
-基于以下用户偏好生成推荐:
-- 饮食类型: ${preference.type}
-- 饮食限制: ${preference.restrictions}
-- 过敏源: ${preference.allergies}
-- 期望热量: ${preference.calories}
-- 可用烹饪时间: ${preference.cookingTime}
-
-请推荐一份合适的{餐次}食谱，包含:
-1. 菜品名称
-2. 所需食材
-3. 预计热量
-4. 烹饪时间
-5. 营养成分
+```sql
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  clerk_id TEXT NOT NULL UNIQUE,
+  email TEXT,
+  username TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-## 3. 开发计划
+### recipes
 
-### 3.1 第一阶段 (MVP)
+```sql
+CREATE TABLE recipes (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  ingredients JSONB,
+  steps JSONB,
+  cuisine_type TEXT,
+  diet_type TEXT[],
+  cooking_time INTEGER,
+  calories INTEGER,
+  nutrition_facts JSONB,
+  image_url TEXT,
+  created_by TEXT REFERENCES users(clerk_id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-- 基础用户系统
-- 单次饮食推荐
-- 基本的用户偏好设置
+### meal_plans
 
-### 3.2 第二阶段
+```sql
+CREATE TABLE meal_plans (
+  id TEXT PRIMARY KEY,
+  user_id TEXT REFERENCES users(clerk_id),
+  recipe_id TEXT REFERENCES recipes(id),
+  date DATE NOT NULL,
+  meal_type TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-- 每日/每周食谱规划
-- 详细的个性化设置
-- 食材营养查询
+### preferences
 
-### 3.3 第三阶段
+```sql
+CREATE TABLE preferences (
+  id TEXT PRIMARY KEY REFERENCES users(clerk_id),
+  diet_type TEXT[],
+  allergies TEXT[],
+  calories_min INTEGER,
+  calories_max INTEGER,
+  max_cooking_time INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-- 社交功能
-- 数据统计与分析
-- 高级 AI 推荐算法优化
+### favorites
+
+```sql
+CREATE TABLE favorites (
+  id TEXT PRIMARY KEY,
+  user_id TEXT REFERENCES users(clerk_id),
+  recipe_id TEXT REFERENCES recipes(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## 性能优化
+
+### 缓存策略
+
+1. **热门食谱缓存**
+
+   - 缓存最受欢迎的 50 个食谱
+   - 每 30 分钟更新一次
+   - 使用 Redis 存储
+
+2. **最新食谱缓存**
+
+   - 缓存最新的 30 个食谱
+   - 随数据更新实时刷新
+   - 使用 Redis 存储
+
+3. **用户偏好缓存**
+   - 缓存用户的偏好设置
+   - 在更新时刷新
+   - 使用 Redis 存储
+
+### 预热机制
+
+- 服务启动 5 秒后开始预热
+- 每 30 分钟自动预热一次
+- 支持手动触发预热
+- 预热包括热门食谱和最新食谱
+
+## 开发环境设置
+
+1. 克隆仓库
+
+```bash
+git clone <repository-url>
+cd catten-eat-what
+```
+
+2. 安装依赖
+
+```bash
+bun install
+```
+
+3. 配置环境变量
+
+```bash
+cp .env.example .env.local
+```
+
+编辑 `.env.local` 文件，填入必要的配置：
+
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+CLERK_SECRET_KEY=your_clerk_secret_key
+REDIS_URL=your_redis_url
+```
+
+4. 启动开发服务器
+
+```bash
+bun run dev
+```
+
+## 测试
+
+运行单元测试：
+
+```bash
+bun test
+```
+
+运行测试覆盖率报告：
+
+```bash
+bun test:coverage
+```
+
+## API 文档
+
+详细的 API 文档请参考 `api.http` 文件，可以使用 VSCode 的 REST Client 插件直接测试 API。
+
+## 部署
+
+1. 构建项目
+
+```bash
+bun run build
+```
+
+2. 启动生产服务器
+
+```bash
+bun run start
+```
+
+## 贡献指南
+
+1. Fork 项目
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'Add some amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 创建 Pull Request
+
+## 许可证
+
+MIT License

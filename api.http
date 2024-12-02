@@ -1,199 +1,159 @@
-@baseUrl = http://localhost:3000/api
-@authToken = your_jwt_token_here
-@recipeId = 123456
-@mealPlanId = 123456
-### 食谱相关接口 ###
+@baseUrl = http://localhost:3000
+@clerkToken = 'user_2pblP3xyKDxE9fxO1hmLcGfarK6'
+
+### 健康检查
+GET {{baseUrl}}/health
+Content-Type: application/json
+
+### 用户认证相关 API ###
+
+### 获取当前用户信息
+GET {{baseUrl}}/auth/me
+Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
+
+### Clerk Webhook - 用户创建回调
+# 这个接口通常由 Clerk 服务调用，不需要手动测试
+POST {{baseUrl}}/auth/webhook
+Content-Type: application/json
+
+{
+  "type": "user.created",
+  "data": {
+    "id": "clerk_user_id",
+    "email_addresses": [
+      {
+        "email_address": "milkrong@gmail.com"
+      }
+    ],
+    "username": "milkrong"
+  }
+}
+
+### 食谱相关 API ###
 
 ### 获取食谱列表
 GET {{baseUrl}}/recipes
 Content-Type: application/json
 
-### 获取食谱列表（带过滤）
-GET {{baseUrl}}/recipes?cuisineType=chinese&maxCookingTime=30&dietType=vegetarian,keto
-Content-Type: application/json
-
 ### 获取单个食谱
-GET {{baseUrl}}/recipes/{{recipeId}}
+GET {{baseUrl}}/recipes/1
 Content-Type: application/json
 
-### 创建食谱
+### 创建食谱（需要认证）
 POST {{baseUrl}}/recipes
-Authorization: Bearer {{authToken}}
 Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
 
 {
-  "name": "宫保鸡丁",
-  "description": "一道经典的川菜",
+  "name": "示例食谱",
+  "description": "这是一个示例食谱",
   "ingredients": [
     {
-      "name": "鸡胸肉",
-      "amount": 300,
-      "unit": "g"
-    },
-    {
-      "name": "花生",
-      "amount": 50,
-      "unit": "g"
+      "name": "食材1",
+      "amount": "100g"
     }
   ],
   "steps": [
     {
-      "order": 1,
-      "description": "鸡肉切丁"
-    },
-    {
-      "order": 2,
-      "description": "腌制调味"
+      "step": 1,
+      "description": "步骤1的描述"
     }
-  ],
-  "calories": 450,
-  "cooking_time": 30,
-  "nutrition_facts": {
-    "protein": 25,
-    "carbs": 30,
-    "fat": 15,
-    "fiber": 3
-  },
-  "cuisine_type": "chinese",
-  "diet_type": ["spicy", "high_protein"]
+  ]
 }
 
-### 更新食谱
-PUT {{baseUrl}}/recipes/{{recipeId}}
-Authorization: Bearer {{authToken}}
+### 更新食谱（需要认证）
+PUT {{baseUrl}}/recipes/1
 Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
 
 {
-  "name": "改良版宫保鸡丁",
-  "description": "更健康的版本",
-  "cooking_time": 25
-  // ... 其他字段同创建食谱
+  "name": "更新后的食谱",
+  "description": "更新后的描述"
 }
 
-### 删除食谱
-DELETE {{baseUrl}}/recipes/{{recipeId}}
-Authorization: Bearer {{authToken}}
+### 删除食谱（需要认证）
+DELETE {{baseUrl}}/recipes/1
+Authorization: Bearer {{clerkToken}}
 
-### 膳食计划相关接口 ###
+### 餐饮计划相关 API ###
 
-### 获取用户膳食计划
-GET {{baseUrl}}/meal-plans?startDate=2024-03-01T00:00:00Z&endDate=2024-03-07T23:59:59Z
-Authorization: Bearer {{authToken}}
+### 获取用户的餐饮计划（需要认证）
+GET {{baseUrl}}/meal-plans
 Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
 
-### 创建单个膳食计划
+### 创建餐饮计划（需要认证）
 POST {{baseUrl}}/meal-plans
-Authorization: Bearer {{authToken}}
 Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
 
 {
-  "date": "2024-03-01T12:00:00Z",
+  "date": "2023-12-19",
   "meal_type": "lunch",
-  "recipe_id": "recipe-uuid-here"
+  "recipe_id": "recipe_1"
 }
 
-### 生成膳食计划
-POST {{baseUrl}}/meal-plans/generate
-Authorization: Bearer {{authToken}}
+### 更新餐饮计划（需要认证）
+PUT {{baseUrl}}/meal-plans/1
 Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
 
 {
-  "startDate": "2024-03-01T00:00:00Z",
-  "endDate": "2024-03-07T23:59:59Z",
-  "preferences": {
-    "cuisineTypes": ["chinese", "japanese"],
-    "dietTypes": ["vegetarian"],
-    "maxCookingTime": 45,
-    "caloriesPerDay": 2000
-  }
+  "meal_type": "dinner"
 }
 
-### 更新膳食计划
-PUT {{baseUrl}}/meal-plans/{{mealPlanId}}
-Authorization: Bearer {{authToken}}
+### 删除餐饮计划（需要认证）
+DELETE {{baseUrl}}/meal-plans/1
+Authorization: Bearer {{clerkToken}}
+
+### 推荐相关 API ###
+
+### 获取推荐食谱
+GET {{baseUrl}}/recommendations
 Content-Type: application/json
 
-{
-  "date": "2024-03-01T18:00:00Z",
-  "meal_type": "dinner",
-  "recipe_id": "new-recipe-uuid"
-}
-
-### 删除膳食计划
-DELETE {{baseUrl}}/meal-plans/{{mealPlanId}}
-Authorization: Bearer {{authToken}}
-
-### 用户相关接口 ###
-
-### 获取用户资料
-GET {{baseUrl}}/users/profile
-Authorization: Bearer {{authToken}}
+### 获取个性化推荐（需要认证）
+GET {{baseUrl}}/recommendations/personalized
 Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
 
-### 更新用户资料
-PUT {{baseUrl}}/users/profile
-Authorization: Bearer {{authToken}}
-Content-Type: application/json
+### 用户偏好相关 API ###
 
-{
-  "username": "新用户名",
-  "avatar_url": "https://example.com/avatar.jpg"
-}
-
-### 获取用户收藏的食谱
-GET {{baseUrl}}/users/favorites
-Authorization: Bearer {{authToken}}
-Content-Type: application/json
-
-### 添加食谱到收藏
-POST {{baseUrl}}/users/favorites/{{recipeId}}
-Authorization: Bearer {{authToken}}
-Content-Type: application/json
-
-### 从收藏中移除食谱
-DELETE {{baseUrl}}/users/favorites/{{recipeId}}
-Authorization: Bearer {{authToken}}
-
-### 获取用户偏好设置
+### 获取用户偏好（需要认证）
 GET {{baseUrl}}/users/preferences
-Authorization: Bearer {{authToken}}
 Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
 
-### 更新用户偏好设置
+### 更新用户偏好（需要认证）
 PUT {{baseUrl}}/users/preferences
-Authorization: Bearer {{authToken}}
 Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
 
 {
-  "diet_type": ["vegetarian", "low_carb"],
-  "restrictions": ["peanut", "seafood"],
-  "allergies": ["dairy"],
-  "calories_min": 1800,
-  "calories_max": 2200,
-  "max_cooking_time": 45
+  "diet_type": ["vegetarian"],
+  "allergies": ["peanuts"],
+  "calories_min": 500,
+  "calories_max": 800,
+  "max_cooking_time": 30
 }
 
-### 认证相关接口 ###
+### 收藏相关 API ###
 
-### 用户注册
-POST {{baseUrl}}/auth/register
+### 获取收藏的食谱（需要认证）
+GET {{baseUrl}}/users/favorites
 Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
+
+### 添加收藏（需要认证）
+POST {{baseUrl}}/users/favorites
+Content-Type: application/json
+Authorization: Bearer {{clerkToken}}
 
 {
-  "email": "user@example.com",
-  "password": "your_password",
-  "username": "desired_username"
+  "recipe_id": "recipe_1"
 }
 
-### 用户登录
-POST {{baseUrl}}/auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "your_password"
-}
-
-### 用户登出
-POST {{baseUrl}}/auth/logout
-Authorization: Bearer {{authToken}}
+### 取消收藏（需要认证）
+DELETE {{baseUrl}}/users/favorites/recipe_1
+Authorization: Bearer {{clerkToken}} 

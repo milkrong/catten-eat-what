@@ -1,69 +1,34 @@
 // src/middlewares/auth.ts
 import { Context, Next } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { supabase } from '../config/supabase';
+import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 
+// 导出 Clerk 中间件
+export { clerkMiddleware };
+
+// 认证中间件
 export const authMiddleware = async (c: Context, next: Next) => {
-  try {
-    // 从请求头获取认证token
-    const authHeader = c.req.header('Authorization');
+  const auth = getAuth(c);
 
-    if (!authHeader) {
-      throw new HTTPException(401, { message: '未提供认证信息' });
-    }
-
-    // 验证Bearer token格式
-    const [bearer, token] = authHeader.split(' ');
-    if (bearer !== 'Bearer' || !token) {
-      throw new HTTPException(401, { message: '无效的认证格式' });
-    }
-
-    // 验证JWT token
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser(token);
-
-    if (error || !user) {
-      throw new HTTPException(401, { message: '无效的认证token' });
-    }
-
-    // 在上下文中保存用户信息
-    c.set('userId', user.id);
-    c.set('user', user);
-
-    await next();
-  } catch (error) {
-    if (error instanceof HTTPException) {
-      throw error;
-    }
-    throw new HTTPException(401, { message: '认证失败' });
+  if (!auth?.userId) {
+    throw new HTTPException(401, { message: 'Unauthorized' });
   }
+
+  // 将用户ID添加到上下文中
+  c.set('userId', auth.userId);
+
+  await next();
 };
 
-// 可选的认证中间件 - 用于某些端点可以选择是否登录
+// 可选的认证中间件
 export const optionalAuthMiddleware = async (c: Context, next: Next) => {
-  try {
-    const authHeader = c.req.header('Authorization');
+  const auth = getAuth(c);
 
-    if (authHeader) {
-      const [bearer, token] = authHeader.split(' ');
-      if (bearer === 'Bearer' && token) {
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser(token);
-        if (!error && user) {
-          c.set('userId', user.id);
-          c.set('user', user);
-        }
-      }
-    }
-
-    await next();
-  } catch (error) {
-    await next();
+  if (auth?.userId) {
+    c.set('userId', auth.userId);
   }
+
+  await next();
 };
 
 // 权限检查中间件生成器

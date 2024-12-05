@@ -1,59 +1,71 @@
 // src/routes/admin.routes.ts
 import { Hono } from 'hono';
 import { CacheWarmupProgressService } from '../services/cache-warmup-progress.service';
+import { WarmupSchedulerService } from '../services/warmup-scheduler.service';
 
 const app = new Hono();
 const progressService = new CacheWarmupProgressService();
 
-// 获取当前/最近的预热会话
-app.get('/cache/warmup/sessions', async (c) => {
-  const limit = parseInt(c.req.query('limit') || '10');
-  const sessions = await progressService.getRecentSessions(limit);
-  return c.json(sessions);
-});
+export const initAdminRoutes = (warmupScheduler: WarmupSchedulerService) => {
+  // Basic cache status and manual warmup endpoints
+  app.get('/cache/status', async (c) => {
+    return c.json(warmupScheduler.getStatus());
+  });
 
-// 获取特定会话的详细信息
-app.get('/cache/warmup/sessions/:sessionId', async (c) => {
-  const sessionId = c.req.param('sessionId');
-  const session = await progressService.getSession(sessionId);
+  app.post('/cache/warmup', async (c) => {
+    await warmupScheduler.manualWarmup();
+    return c.json({ message: 'Cache warmup triggered' });
+  });
 
-  if (!session) {
-    return c.json({ error: 'Session not found' }, 404);
-  }
+  // Detailed warmup session management
+  app.get('/cache/warmup/sessions', async (c) => {
+    const limit = parseInt(c.req.query('limit') || '10');
+    const sessions = await progressService.getRecentSessions(limit);
+    return c.json(sessions);
+  });
 
-  return c.json(session);
-});
+  app.get('/cache/warmup/sessions/:sessionId', async (c) => {
+    const sessionId = c.req.param('sessionId');
+    const session = await progressService.getSession(sessionId);
 
-// 获取预热进度摘要
-app.get('/cache/warmup/summary', async (c) => {
-  const sessions = await progressService.getRecentSessions(1);
-  if (sessions.length === 0) {
-    return c.json({
-      status: 'no_recent_sessions',
-      lastRun: null,
-    });
-  }
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404);
+    }
 
-  const latestSession = sessions[0];
-  const summary = {
-    status: latestSession.status,
-    progress: latestSession.progress,
-    startTime: latestSession.startTime,
-    endTime: latestSession.endTime,
-    duration: latestSession.endTime
-      ? new Date(latestSession.endTime).getTime() -
-        new Date(latestSession.startTime).getTime()
-      : null,
-    taskSummary: Object.values(latestSession.tasks).map((task) => ({
-      type: task.taskType,
-      status: task.status,
-      progress: `${task.completed}/${task.total}`,
-      failed: task.failed,
-      estimatedTimeRemaining: task.details.estimatedTimeRemaining,
-    })),
-  };
+    return c.json(session);
+  });
 
-  return c.json(summary);
-});
+  app.get('/cache/warmup/summary', async (c) => {
+    const sessions = await progressService.getRecentSessions(1);
+    if (sessions.length === 0) {
+      return c.json({
+        status: 'no_recent_sessions',
+        lastRun: null,
+      });
+    }
+
+    const latestSession = sessions[0];
+    const summary = {
+      status: latestSession.status,
+      progress: latestSession.progress,
+      startTime: latestSession.startTime,
+      endTime: latestSession.endTime,
+      duration: latestSession.endTime
+        ? new Date(latestSession.endTime).getTime() -
+          new Date(latestSession.startTime).getTime()
+        : null,
+      taskSummary: Object.values(latestSession.tasks).map((task) => ({
+        type: task.taskType,
+        status: task.status,
+        progress: `${task.completed}/${task.total}`,
+        failed: task.failed,
+        estimatedTimeRemaining: task.details.estimatedTimeRemaining,
+      })),
+    };
+    return c.json(summary);
+  });
+
+  return app;
+};
 
 export { app as adminRoutes };

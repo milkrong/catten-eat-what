@@ -44,6 +44,7 @@ const app = new Hono();
 // 获取食谱列表
 app.get('/', async (c) => {
   try {
+    console.log(c.req.query);
     const filters: RecipeFilters = {
       cuisineType: c.req.query('cuisineType'),
       maxCookingTime: c.req.query('maxCookingTime')

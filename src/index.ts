@@ -4,11 +4,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { HTTPException } from 'hono/http-exception';
-import {
-  authMiddleware,
-  optionalAuthMiddleware,
-  clerkMiddleware,
-} from './middlewares/auth';
+import { authMiddleware } from './middlewares/auth';
 import { recipeRoutes } from './routes/recipe.routes';
 import { mealPlanRoutes } from './routes/meal-plan.routes';
 import { supabase } from './config/supabase';
@@ -18,9 +14,10 @@ import { userRoutes } from './routes/user.routes';
 import { PreferenceValidationError } from './types/errors';
 import { CacheService } from './services/cache.service';
 import { RecipeService } from './services/recipe.service';
-import authRoutes from './routes/auth';
+import authRoutes from './routes/auth.routes';
+import { adminRoutes } from './routes/admin.routes';
 
-const app = new Hono();
+const app = new Hono().basePath('/api');
 
 // 创建必要的服务实例
 const cacheService = new CacheService();
@@ -49,126 +46,31 @@ app.use('*', prettyJSON());
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:3000', 'https://your-production-domain.com'],
+    origin: '*',
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
-app.use('*', clerkMiddleware());
 
 // 健康检查 - 无需认证
 app.get('/health', (c) => c.json({ status: 'ok' }));
 
-// API路由
-const api = new Hono();
-
 // 认证路由
-api.route('/auth', authRoutes);
+app.route('/auth', authRoutes);
 
 // 公开路由
-api.route('/recipes', recipeRoutes);
-api.route('/recommendations', recommendationRoutes);
+app.route('/recipes', recipeRoutes);
+app.route('/recommendations', recommendationRoutes);
 
-// 需要认证的路由
-api.use('/users/*', authMiddleware);
-api.route('/users', userRoutes);
-api.use('/meal-plans/*', authMiddleware);
-api.route('/meal-plans', mealPlanRoutes);
+// 需要认证���路由
+app.use('/users/*', authMiddleware);
+app.route('/users', userRoutes);
+app.use('/meal-plans/*', authMiddleware);
+app.route('/meal-plans', mealPlanRoutes);
 
-// 添加预热状态检查接口
-app.get('/api/admin/cache/status', async (c) => {
-  return c.json(warmupScheduler.getStatus());
-});
-
-// 添加手动预热接口
-app.post('/api/admin/cache/warmup', async (c) => {
-  await warmupScheduler.manualWarmup();
-  return c.json({ message: 'Cache warmup triggered' });
-});
-
-// 优雅关闭
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received. Stopping warmup scheduler...');
-  warmupScheduler.stop();
-  console.log('SIGTERM received. Closing Redis connection...');
-  await cacheService.close();
-});
-
-// 认证相关的路由处理
-api.post('/auth/register', async (c) => {
-  try {
-    const { email, password, username } = await c.req.json();
-
-    // 创建用户
-    const {
-      data: { user },
-      error: signUpError,
-    } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (signUpError) throw signUpError;
-
-    if (user) {
-      // 创建用户档案
-      const { error: profileError } = await supabase.from('profiles').insert([
-        {
-          id: user.id,
-          username,
-          avatar_url: null,
-        },
-      ]);
-
-      if (profileError) throw profileError;
-    }
-
-    return c.json({
-      message: '注册成功，请检查邮箱完成验证',
-      user,
-    });
-  } catch (error: any) {
-    return c.json({ error: error.message }, 400);
-  }
-});
-
-api.post('/auth/login', async (c) => {
-  try {
-    const { email, password } = await c.req.json();
-
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw error;
-
-    return c.json({
-      message: '登录成功',
-      session,
-    });
-  } catch (error: any) {
-    return c.json({ error: error.message }, 401);
-  }
-});
-
-api.post('/auth/logout', authMiddleware, async (c) => {
-  try {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-
-    return c.json({ message: '退出登录成功' });
-  } catch (error: any) {
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// 挂载API路由
-app.route('/api', api);
+// Mount admin routes under /api/admin
+app.route('/api/admin', adminRoutes);
 
 // 全局错误处理
 app.onError((err, c) => {

@@ -1,34 +1,37 @@
 // src/middlewares/auth.ts
 import { Context, Next } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
-
-// 导出 Clerk 中间件
-export { clerkMiddleware };
+import { supabase } from '../config/supabase';
 
 // 认证中间件
 export const authMiddleware = async (c: Context, next: Next) => {
-  const auth = getAuth(c);
+  console.log('authMiddleware');
+  const authHeader = c.req.header('Authorization');
 
-  if (!auth?.userId) {
-    throw new HTTPException(401, { message: 'Unauthorized' });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: '未提供认证令牌' }, 401);
   }
 
-  // 将用户ID添加到上下文中
-  c.set('userId', auth.userId);
+  const token = authHeader.split(' ')[1];
 
-  await next();
-};
+  try {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser(token);
 
-// 可选的认证中间件
-export const optionalAuthMiddleware = async (c: Context, next: Next) => {
-  const auth = getAuth(c);
+    if (error || !user) {
+      return c.json({ error: '无效的认证令牌' }, 401);
+    }
 
-  if (auth?.userId) {
-    c.set('userId', auth.userId);
+    // 将用户信息添加到上下文中
+    c.set('userId', user.id);
+    c.set('user', user);
+
+    await next();
+  } catch (error: any) {
+    return c.json({ error: '认证失败' }, 401);
   }
-
-  await next();
 };
 
 // 权限检查中间件生成器

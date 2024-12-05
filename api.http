@@ -1,34 +1,38 @@
-@baseUrl = http://localhost:3000
-@clerkToken = 'user_2pblP3xyKDxE9fxO1hmLcGfarK6'
+@host = http://localhost:3002
+@baseUrl = {{host}}/api
+@auth_token = 
+### 认证相关 API ###
 
-### 健康检查
-GET {{baseUrl}}/health
-Content-Type: application/json
-
-### 用户认证相关 API ###
-
-### 获取当前用户信息
-GET {{baseUrl}}/auth/me
-Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
-
-### Clerk Webhook - 用户创建回调
-# 这个接口通常由 Clerk 服务调用，不需要手动测试
-POST {{baseUrl}}/auth/webhook
+### 用户注册
+POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
 {
-  "type": "user.created",
-  "data": {
-    "id": "clerk_user_id",
-    "email_addresses": [
-      {
-        "email_address": "milkrong@gmail.com"
-      }
-    ],
-    "username": "milkrong"
-  }
+  "email": "test@example.com",
+  "password": "your-password",
+  "username": "testuser"
 }
+
+### 用户登录
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "your-password"
+}
+
+### 获取当前用户信息
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{auth_token}}
+
+### 刷新 Token
+POST {{baseUrl}}/auth/refresh
+Authorization: Bearer {{auth_token}}
+
+### 用户登出
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{auth_token}}
 
 ### 食谱相关 API ###
 
@@ -43,53 +47,72 @@ Content-Type: application/json
 ### 创建食谱（需要认证）
 POST {{baseUrl}}/recipes
 Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
+Authorization: Bearer {{auth_token}}
 
 {
-  "name": "示例食谱",
-  "description": "这是一个示例食谱",
+  "name": "红烧肉",
+  "description": "经典的中国菜",
   "ingredients": [
     {
-      "name": "食材1",
-      "amount": "100g"
+      "name": "五花肉",
+      "amount": 500,
+      "unit": "g"
+    },
+    {
+      "name": "生抽",
+      "amount": 30,
+      "unit": "ml"
     }
   ],
   "steps": [
     {
-      "step": 1,
-      "description": "步骤1的描述"
+      "order": 1,
+      "description": "将五花肉切块"
+    },
+    {
+      "order": 2,
+      "description": "锅中加油，放入五花肉煸炒"
     }
-  ]
+  ],
+  "calories": 650,
+  "cooking_time": 45,
+  "nutrition_facts": {
+    "protein": 25,
+    "carbs": 5,
+    "fat": 45,
+    "fiber": 1
+  },
+  "cuisine_type": "chinese",
+  "diet_type": ["meat", "keto"]
 }
 
 ### 更新食谱（需要认证）
 PUT {{baseUrl}}/recipes/1
 Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
+Authorization: Bearer {{auth_token}}
 
 {
-  "name": "更新后的食谱",
+  "name": "改良版红烧肉",
   "description": "更新后的描述"
 }
 
 ### 删除食谱（需要认证）
 DELETE {{baseUrl}}/recipes/1
-Authorization: Bearer {{clerkToken}}
+Authorization: Bearer {{auth_token}}
 
 ### 餐饮计划相关 API ###
 
 ### 获取用户的餐饮计划（需要认证）
-GET {{baseUrl}}/meal-plans
-Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
+GET {{baseUrl}}/meal-plans?startDate=2024-01-01&endDate=2024-01-07
+Authorization: Bearer {{auth_token}}
 
 ### 创建餐饮计划（需要认证）
 POST {{baseUrl}}/meal-plans
 Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
+Authorization: Bearer {{auth_token}}
 
 {
-  "date": "2023-12-19",
+  "date": "2024-01-01T12:00:00Z",
   "meal_type": "lunch",
   "recipe_id": "recipe_1"
 }
@@ -97,7 +120,7 @@ Authorization: Bearer {{clerkToken}}
 ### 更新餐饮计划（需要认证）
 PUT {{baseUrl}}/meal-plans/1
 Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
+Authorization: Bearer {{auth_token}}
 
 {
   "meal_type": "dinner"
@@ -105,55 +128,87 @@ Authorization: Bearer {{clerkToken}}
 
 ### 删除餐饮计划（需要认证）
 DELETE {{baseUrl}}/meal-plans/1
-Authorization: Bearer {{clerkToken}}
+Authorization: Bearer {{auth_token}}
 
 ### 推荐相关 API ###
 
-### 获取推荐食谱
-GET {{baseUrl}}/recommendations
+### 获取单餐推荐
+POST {{baseUrl}}/recommendations/single
 Content-Type: application/json
 
-### 获取个性化推荐（需要认证）
-GET {{baseUrl}}/recommendations/personalized
+{
+  "cuisineTypes": ["chinese"],
+  "dietTypes": ["vegetarian"],
+  "maxCookingTime": 30,
+  "caloriesRange": {
+    "min": 300,
+    "max": 600
+  }
+}
+
+### 获取每日推荐
+POST {{baseUrl}}/recommendations/daily
 Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
 
-### 用户偏好相关 API ###
+{
+  "cuisineTypes": ["chinese", "western"],
+  "dietTypes": ["balanced"],
+  "maxCookingTime": 45,
+  "caloriesPerDay": 2000
+}
 
-### 获取用户偏好（需要认证）
+### 获取每周推荐
+POST {{baseUrl}}/recommendations/weekly
+Content-Type: application/json
+
+{
+  "cuisineTypes": ["chinese", "western", "japanese"],
+  "dietTypes": ["balanced"],
+  "maxCookingTime": 45,
+  "caloriesPerDay": 2000
+}
+
+### 用户相关 API ###
+
+### 获取用户个人资料（需要认证）
+GET {{baseUrl}}/users/profile
+Authorization: Bearer {{auth_token}}
+
+### 更新用户个人资料（需要认证）
+PUT {{baseUrl}}/users/profile
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "username": "newusername",
+  "avatar_url": "https://example.com/avatar.jpg"
+}
+
+### 获取用户偏好设置（需要认证）
 GET {{baseUrl}}/users/preferences
-Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
+Authorization: Bearer {{auth_token}}
 
-### 更新用户偏好（需要认证）
+### 更新用户偏好设置（需要认证）
 PUT {{baseUrl}}/users/preferences
 Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
+Authorization: Bearer {{auth_token}}
 
 {
-  "diet_type": ["vegetarian"],
-  "allergies": ["peanuts"],
-  "calories_min": 500,
-  "calories_max": 800,
-  "max_cooking_time": 30
+  "preferred_cuisines": ["chinese", "japanese"],
+  "dietary_restrictions": ["vegetarian"],
+  "max_cooking_time": 45,
+  "calories_per_meal": 500
 }
 
-### 收藏相关 API ###
+### 系统管理 API ###
 
-### 获取收藏的食谱（需要认证）
-GET {{baseUrl}}/users/favorites
-Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
+### 获取缓存状态
+GET {{baseUrl}}/admin/cache/status
+Authorization: Bearer {{auth_token}}
 
-### 添加收藏（需要认证）
-POST {{baseUrl}}/users/favorites
-Content-Type: application/json
-Authorization: Bearer {{clerkToken}}
+### 手动触发缓存预热
+POST {{baseUrl}}/admin/cache/warmup
+Authorization: Bearer {{auth_token}} 
 
-{
-  "recipe_id": "recipe_1"
-}
-
-### 取消收藏（需要认证）
-DELETE {{baseUrl}}/users/favorites/recipe_1
-Authorization: Bearer {{clerkToken}} 
+### 健康检查
+GET {{host}}/health

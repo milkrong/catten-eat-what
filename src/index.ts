@@ -59,11 +59,11 @@ app.get('/health', (c) => c.json({ status: 'ok' }));
 // 认证路由
 app.route('/auth', authRoutes);
 
-// 公开路由
+// 需要认证的路由
+app.use('/recipes/*', authMiddleware);
 app.route('/recipes', recipeRoutes);
+app.use('/recommendations/*', authMiddleware);
 app.route('/recommendations', recommendationRoutes);
-
-// 需要认证���路由
 app.use('/users/*', authMiddleware);
 app.route('/users', userRoutes);
 app.use('/meal-plans/*', authMiddleware);
@@ -74,6 +74,7 @@ app.route('/api/admin', adminRoutes);
 
 // 全局错误处理
 app.onError((err, c) => {
+  console.log('xxxx error:', err);
   if (err instanceof HTTPException) {
     return c.json(
       {

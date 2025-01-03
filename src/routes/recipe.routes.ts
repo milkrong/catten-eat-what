@@ -34,7 +34,7 @@ const createRecipeSchema = z.object({
     fat: z.number(),
     fiber: z.number(),
   }),
-  cuisine_type: z.string(),
+  cuisine_type: z.array(z.string()),
   diet_type: z.array(z.string()),
 });
 
@@ -44,7 +44,7 @@ const app = new Hono();
 // 获取食谱列表
 app.get('/', async (c) => {
   try {
-    console.log(c.req.query);
+    console.log('get recipes', c.req.query);
     const filters: RecipeFilters = {
       cuisineType: c.req.query('cuisineType'),
       maxCookingTime: c.req.query('maxCookingTime')
@@ -80,15 +80,27 @@ app.get('/:id', async (c) => {
 app.post('/', zValidator('json', createRecipeSchema), async (c) => {
   try {
     const recipeData = await c.req.json<Recipe>();
-    const userId = c.get('userId'); // 从认证中间件获取
+    const userId = c.get('userId');
+
+    // 打印用户ID，用于调试
+    console.log('Creating recipe with userId:', userId);
 
     const recipe = await recipeService.createRecipe({
-      ...recipeData,
-      created_by: userId,
+      name: recipeData.name,
+      description: recipeData.description,
+      ingredients: recipeData.ingredients,
+      steps: recipeData.steps,
+      calories: recipeData.calories,
+      cooking_time: recipeData.cooking_time,
+      nutrition_facts: recipeData.nutrition_facts,
+      cuisine_type: recipeData.cuisine_type,
+      diet_type: recipeData.diet_type,
+      created_by: userId, // 确保这里的 userId 是 UUID 格式
     });
 
     return c.json(recipe, 201);
   } catch (error: any) {
+    console.error('Full error:', error); // 添加更详细的错误日志
     return c.json({ error: error.message }, 500);
   }
 });

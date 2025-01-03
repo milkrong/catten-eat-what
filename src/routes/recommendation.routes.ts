@@ -5,28 +5,31 @@ const recommendationRoutes = new Hono();
 const recommendationService = new RecommendationService();
 
 recommendationRoutes.post('/single', async (c) => {
-  const preferences = await c.req.json();
+  const request = await c.req.json();
+  const user_id = c.get('userId');
+
+  console.log(request, user_id);
   const recommendation =
-    await recommendationService.getSingleMealRecommendation(preferences);
+    await recommendationService.getSingleMealRecommendation(request);
   return c.json(recommendation);
 });
 
 recommendationRoutes.post('/daily', async (c) => {
-  const preferences = await c.req.json();
+  const request = await c.req.json();
   const recommendations =
-    await recommendationService.getDailyPlanRecommendation(preferences);
+    await recommendationService.getDailyPlanRecommendation(request);
   return c.json(recommendations);
 });
 
 recommendationRoutes.post('/weekly', async (c) => {
-  const preferences = await c.req.json();
+  const request = await c.req.json();
   const recommendations =
-    await recommendationService.getWeeklyPlanRecommendation(preferences);
+    await recommendationService.getWeeklyPlanRecommendation(request);
   return c.json(recommendations);
 });
 
 recommendationRoutes.post('/single/stream', async (c) => {
-  const preferences = await c.req.json();
+  const request = await c.req.json();
 
   c.header('Content-Type', 'text/event-stream');
   c.header('Cache-Control', 'no-cache');
@@ -38,7 +41,7 @@ recommendationRoutes.post('/single/stream', async (c) => {
 
   // 启动异步推荐过程
   recommendationService
-    .getStreamingSingleMealRecommendation(preferences, (chunk) => {
+    .getStreamingSingleMealRecommendation(request, (chunk) => {
       writer.write(
         new TextEncoder().encode(
           `data: ${JSON.stringify({ content: chunk })}\n\n`

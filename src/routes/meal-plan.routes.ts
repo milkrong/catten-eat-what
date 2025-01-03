@@ -56,7 +56,9 @@ app.get('/', async (c) => {
 app.post('/', zValidator('json', createMealPlanSchema), async (c) => {
   try {
     const userId = c.get('userId');
+    console.log('userId', userId);
     const mealPlanData = await c.req.json<MealPlan>();
+    console.log('mealPlanData', mealPlanData);
 
     const mealPlan = await mealPlanService.createMealPlan({
       ...mealPlanData,

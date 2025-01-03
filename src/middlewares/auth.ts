@@ -7,6 +7,7 @@ import { supabase } from '../config/supabase';
 export const authMiddleware = async (c: Context, next: Next) => {
   console.log('authMiddleware');
   const authHeader = c.req.header('Authorization');
+  console.log('authHeader', authHeader);
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ error: '未提供认证令牌' }, 401);
@@ -23,6 +24,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
     if (error || !user) {
       return c.json({ error: '无效的认证令牌' }, 401);
     }
+    console.log('~~~~~', user.id, user);
 
     // 将用户信息添加到上下文中
     c.set('userId', user.id);

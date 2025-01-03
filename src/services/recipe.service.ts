@@ -2,9 +2,17 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Recipe } from '../types/recipe';
 import { RecipeFilters } from '../types/recipe';
+import type { Database } from '../types/database';
+
+interface RecommendationParams {
+  dietTypes: string[];
+  cuisineTypes: string[];
+  maxCookingTime?: number;
+  excludeIds?: string[];
+}
 
 export class RecipeService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: SupabaseClient<Database>) {}
 
   async getRecipes(filters: RecipeFilters = {}): Promise<Recipe[]> {
     let query = this.supabase.from('recipes').select('*');
@@ -88,6 +96,7 @@ export class RecipeService {
   async createRecipe(
     recipe: Omit<Recipe, 'id' | 'created_at' | 'updated_at'>
   ): Promise<Recipe> {
+    console.log('recipe', recipe);
     const { data, error } = await this.supabase
       .from('recipes')
       .insert([
@@ -126,5 +135,25 @@ export class RecipeService {
     const { error } = await this.supabase.from('recipes').delete().eq('id', id);
 
     if (error) throw error;
+  }
+
+  async getRecommendedRecipes(params: RecommendationParams) {
+    let query = this.supabase.from('recipes').select('*');
+
+    if (params.maxCookingTime) {
+      query = query.lte('cookingTime', params.maxCookingTime);
+    }
+
+    if (params.excludeIds?.length) {
+      query = query.not('id', 'in', params.excludeIds);
+    }
+
+    const { data: recipes, error } = await query.limit(3);
+
+    if (error) {
+      throw error;
+    }
+
+    return recipes;
   }
 }

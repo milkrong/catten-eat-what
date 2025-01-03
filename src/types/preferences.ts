@@ -1,15 +1,16 @@
 export interface DietaryPreferences {
-  dietType: 'regular' | 'vegetarian' | 'vegan' | 'keto' | 'paleo';
-  cuisineTypes: string[];
+  diet_type: ('regular' | 'vegetarian' | 'vegan' | 'keto' | 'paleo')[];
+  cuisine_type: string[];
   allergies: string[];
   restrictions: string[];
-  targetCalories: number;
-  maxCookingTime: number;
-  mealsPerDay: number;
+  target_calories: number;
+  max_cooking_time: number;
+  meals_per_day: number;
 }
 
 export interface RecommendationRequest {
   preferences: DietaryPreferences;
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   excludeRecipes?: string[];
+  provider?: 'dify' | 'coze' | 'ollama';
 }

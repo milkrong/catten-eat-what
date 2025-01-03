@@ -1,12 +1,21 @@
 import { CozeService } from './coze.service';
+import { DifyService } from './dify.service';
+import { OllamaService } from './ollama.service';
+import { DeepSeekService } from './deepseek.service';
 import {
   DietaryPreferences,
   RecommendationRequest,
 } from '../types/preferences';
 import { Recipe } from '../types/recipe';
 
+type AiRecipe = Omit<Recipe, 'id' | 'created_by' | 'created_at' | 'updated_at'>;
+type AIProvider = 'coze' | 'dify' | 'ollama' | 'deepseek';
+
 export class RecommendationService {
   private cozeService: CozeService;
+  private difyService: DifyService;
+  private ollamaService: OllamaService;
+  private deepseekService: DeepSeekService;
 
   constructor() {
     this.cozeService = new CozeService({
@@ -14,68 +23,179 @@ export class RecommendationService {
       botId: process.env.COZE_BOT_ID!,
       apiEndpoint: process.env.COZE_API_ENDPOINT || 'https://api.coze.cn/v1',
     });
+    this.difyService = new DifyService({
+      apiKey: process.env.DIFY_API_KEY!,
+      apiEndpoint: process.env.DIFY_API_ENDPOINT!,
+    });
+    this.ollamaService = new OllamaService({
+      apiEndpoint: process.env.OLLAMA_API_ENDPOINT || 'http://localhost:11434',
+      model: process.env.OLLAMA_MODEL || 'llama2',
+    });
+    this.deepseekService = new DeepSeekService({
+      apiKey: process.env.DEEPSEEK_API_KEY!,
+      apiEndpoint: process.env.DEEPSEEK_API_ENDPOINT,
+      model: process.env.DEEPSEEK_MODEL,
+    });
+  }
+
+  private getAIService(provider: AIProvider = 'coze') {
+    switch (provider) {
+      case 'dify':
+        return this.difyService;
+      case 'ollama':
+        return this.ollamaService;
+      case 'deepseek':
+        return this.deepseekService;
+      default:
+        return this.cozeService;
+    }
   }
 
   private generatePrompt(
     preferences: DietaryPreferences,
     mealType?: string
   ): string {
-    return `请基于以下用户偏好生成推荐:
-- 饮食类型: ${preferences.dietType}
-- 偏好菜系: ${preferences.cuisineTypes.join(', ')}
+    return `基于以下用户偏好生成推荐食谱:
+- 饮食类型: ${preferences.diet_type.join(', ')}
+- 偏好菜系: ${preferences.cuisine_type.join(', ')}
 - 过敏源: ${preferences.allergies.join(', ')}
 - 饮食限制: ${preferences.restrictions.join(', ')}
-- 目标热量: ${preferences.targetCalories}卡路里
-- 最长烹饪时间: ${preferences.maxCookingTime}分钟
+- 目标热量: ${preferences.target_calories}卡路里
+- 最长烹饪时间: ${preferences.max_cooking_time}分钟
 ${mealType ? `- 餐次类型: ${mealType}` : ''}
-
-请推荐一份合适的食谱，包含:
-1. 菜品名称
-2. 所需食材清单
-3. 预计热量
-4. 烹饪时间
-5. 主要营养成分
-6. 简要烹饪步骤`;
+`;
   }
 
   private async getRecommendation(
     request: RecommendationRequest
-  ): Promise<Recipe> {
+  ): Promise<AiRecipe> {
     const prompt = this.generatePrompt(request.preferences, request.mealType);
-
-    const response = await this.cozeService.createConversation([
-      { role: 'user', content: prompt },
-    ]);
-
-    // 从 choices 中获取内容
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No content in response');
+    const provider = request.provider || 'dify';
+    if (provider === 'dify' || provider === 'ollama') {
+      const service = this.getAIService(provider);
+      const response = await (
+        service as OllamaService | DifyService
+      ).createCompletion(prompt);
+      return this.parseAIResponse(
+        response,
+        request.preferences.cuisine_type,
+        request.preferences.diet_type
+      );
     }
 
-    // 解析 AI 响应并转换为 Recipe 格式
-    const recommendation = this.parseAIResponse(content);
-    return recommendation;
+    // Default to Coze service
+    const chatResponse = await this.cozeService.createCompletion(
+      [{ role: 'user', content: prompt }],
+      'recommendation-user',
+      {}
+    );
+
+    await this.cozeService.waitForCompletion(
+      chatResponse.data.conversation_id,
+      chatResponse.data.id
+    );
+
+    const answerMessage = await this.cozeService.getAnswerMessage(
+      chatResponse.data.conversation_id,
+      chatResponse.data.id
+    );
+
+    if (!answerMessage) {
+      throw new Error('No answer message found in response');
+    }
+
+    return this.parseAIResponse(
+      answerMessage.content,
+      request.preferences.cuisine_type,
+      request.preferences.diet_type
+    );
   }
 
-  private parseAIResponse(content: string): Recipe {
-    // 实现解析逻辑，将AI响应转换为结构化的Recipe对象
-    // 这里需要根据实际的AI响应格式来实现
-    // ...
-    return {
-      // ... 解析后的Recipe对象
-    } as Recipe;
+  private parseAIResponse(
+    content: string,
+    cuisine_type: string[],
+    diet_type: string[]
+  ): AiRecipe {
+    try {
+      console.log('>>2', content, cuisine_type, diet_type);
+      // 移除可能的 "```json" 标记
+      const cleanContent = content
+        .replace(/^```json\n/, '')
+        .replace(/\n```$/, '');
+
+      // 解析 JSON
+      console.log('>>3', cleanContent);
+      const rawRecipe = JSON.parse(cleanContent);
+
+      // 转换为标准格式
+      const recipe: AiRecipe = {
+        name: rawRecipe.name,
+        ingredients: rawRecipe.ingredients,
+        calories: rawRecipe.calories,
+        cooking_time: rawRecipe.cooking_time,
+        nutrition_facts: {
+          protein: rawRecipe.nutrition_facts.protein,
+          fat: rawRecipe.nutrition_facts.fat,
+          carbs: rawRecipe.nutrition_facts.carbs,
+          fiber: rawRecipe.nutrition_facts.fiber,
+        },
+        steps: rawRecipe.steps,
+        cuisine_type,
+        diet_type,
+      };
+
+      // 验证必要字段
+      if (
+        !recipe.name ||
+        !recipe.ingredients ||
+        !recipe.calories ||
+        !recipe.cooking_time ||
+        !recipe.nutrition_facts ||
+        !recipe.steps
+      ) {
+        throw new Error('Missing required fields in recipe');
+      }
+
+      // 验证所有食材的格式
+      for (const ingredient of recipe.ingredients) {
+        if (
+          !ingredient.name ||
+          typeof ingredient.amount !== 'number' ||
+          !ingredient.unit
+        ) {
+          throw new Error('Invalid ingredient format');
+        }
+      }
+
+      // 验证营养成分
+      const nutrition = recipe.nutrition_facts;
+      if (
+        typeof nutrition.protein !== 'number' ||
+        typeof nutrition.fat !== 'number' ||
+        typeof nutrition.carbs !== 'number' ||
+        typeof nutrition.fiber !== 'number'
+      ) {
+        throw new Error('Invalid nutrition format');
+      }
+
+      return recipe;
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to parse recipe: ${error.message}`);
+      }
+      throw new Error('Failed to parse recipe: Unknown error');
+    }
   }
 
   async getSingleMealRecommendation(
     request: RecommendationRequest
-  ): Promise<Recipe> {
+  ): Promise<AiRecipe> {
     return this.getRecommendation(request);
   }
 
   async getDailyPlanRecommendation(
     request: RecommendationRequest
-  ): Promise<Recipe[]> {
+  ): Promise<AiRecipe[]> {
     const meals = [];
     const mealTypes = ['breakfast', 'lunch', 'dinner'] as const;
 
@@ -93,7 +213,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
 
   async getWeeklyPlanRecommendation(
     request: RecommendationRequest
-  ): Promise<Recipe[][]> {
+  ): Promise<AiRecipe[][]> {
     const weeklyPlan = [];
 
     for (let day = 0; day < 7; day++) {
@@ -106,36 +226,58 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
 
   async getStreamingRecommendation(
     request: RecommendationRequest,
-    onChunk: (chunk: string) => void
-  ): Promise<Recipe> {
+    onChunk: (chunk: string) => void,
+    provider: AIProvider = 'coze'
+  ): Promise<AiRecipe> {
     const prompt = this.generatePrompt(request.preferences, request.mealType);
     let fullResponse = '';
 
-    await this.cozeService.createStreamConversation(
-      [{ role: 'user', content: prompt }],
-      (chunk) => {
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          fullResponse += content;
-          onChunk(content);
+    if (provider === 'coze') {
+      await this.cozeService.createStreamCompletion(
+        [{ role: 'user', content: prompt }],
+        (chunk) => {
+          const content = chunk.choices[0]?.delta?.content;
+          if (content) {
+            fullResponse += content;
+            onChunk(content);
+          }
+        },
+        'recommendation-user',
+        {
+          auto_save_history: false,
         }
-      }
-    );
+      );
+    } else {
+      const service = this.getAIService(provider);
+      await (service as OllamaService | DifyService).createStreamingCompletion(
+        prompt,
+        (chunk) => {
+          fullResponse += chunk;
+          onChunk(chunk);
+        }
+      );
+    }
 
-    return this.parseAIResponse(fullResponse);
+    return this.parseAIResponse(
+      fullResponse,
+      request.preferences.cuisine_type,
+      request.preferences.diet_type
+    );
   }
 
   async getStreamingSingleMealRecommendation(
     request: RecommendationRequest,
-    onChunk: (chunk: string) => void
-  ): Promise<Recipe> {
+    onChunk: (chunk: string) => void,
+    provider: AIProvider = 'dify'
+  ): Promise<AiRecipe> {
     return this.getStreamingRecommendation(request, onChunk);
   }
 
   async getStreamingDailyPlanRecommendation(
     request: RecommendationRequest,
-    onChunk: (chunk: string) => void
-  ): Promise<Recipe[]> {
+    onChunk: (chunk: string) => void,
+    provider: AIProvider = 'dify'
+  ): Promise<AiRecipe[]> {
     const meals = [];
     const mealTypes = ['breakfast', 'lunch', 'dinner'];
 

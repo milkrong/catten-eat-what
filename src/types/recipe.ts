@@ -4,13 +4,13 @@ import { Ingredient, Step, NutritionFacts } from './index';
 export interface Recipe {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   ingredients: Ingredient[];
   steps: Step[];
   calories: number;
   cooking_time: number;
   nutrition_facts: NutritionFacts;
-  cuisine_type: string;
+  cuisine_type: string[];
   diet_type: string[];
   image_url?: string;
   created_by: string; // 添加 created_by 字段

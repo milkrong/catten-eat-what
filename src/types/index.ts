@@ -8,7 +8,7 @@ export interface Recipe {
   calories: number;
   cooking_time: number;
   nutrition_facts: NutritionFacts;
-  cuisine_type: string;
+  cuisine_type: string[];
   diet_type: string[];
   image_url?: string;
   created_by: string;

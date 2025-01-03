@@ -12,7 +12,7 @@ export type WarmupTaskStatus =
 export type WarmupTaskType =
   | 'popular_recipes'
   | 'recent_recipes'
-  | 'cuisine_types'
+  | 'cuisine_type'
   | 'recipe_stats';
 
 // 预热任务进度

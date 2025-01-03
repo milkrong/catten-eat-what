@@ -93,7 +93,7 @@ export class MealPlanService {
       return data;
     } catch (error) {
       console.error('Create meal plan error:', error);
-      throw new HTTPException(500, { message: '创建膳食计划失败' });
+      throw new HTTPException(500, { message: '创建膳食物计划失败' });
     }
   }
 
@@ -144,10 +144,10 @@ export class MealPlanService {
     startDate: Date,
     endDate: Date,
     preferences: {
-      cuisineTypes: string[];
-      dietTypes: string[];
-      maxCookingTime?: number;
-      caloriesPerDay?: number;
+      cuisine_type: string[];
+      diet_type: string[];
+      max_cooking_time?: number;
+      calories_per_day?: number;
     }
   ) {
     try {
@@ -155,7 +155,7 @@ export class MealPlanService {
       const days = Math.ceil(
         (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
       );
-      const mealTypes = ['breakfast', 'lunch', 'dinner'];
+      const mealTypes = ['breakfast', 'lunch', 'dinner'] as const;
       const mealPlans: MealPlan[] = [];
 
       // 获取已使用的食谱ID列表
@@ -170,9 +170,9 @@ export class MealPlanService {
         for (const mealType of mealTypes) {
           // 获取推荐食谱
           const recipes = await this.recipeService.getRecommendedRecipes({
-            dietType: preferences.dietTypes,
-            cuisineType: preferences.cuisineTypes,
-            maxCookingTime: preferences.maxCookingTime,
+            dietTypes: preferences.diet_type,
+            cuisineTypes: preferences.cuisine_type,
+            maxCookingTime: preferences.max_cooking_time,
             excludeIds: usedRecipeIds,
           });
 

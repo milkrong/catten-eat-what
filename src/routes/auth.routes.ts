@@ -30,6 +30,7 @@ auth.post('/register', async (c) => {
       user,
     });
   } catch (error: any) {
+    console.error(error);
     return c.json({ error: error.message }, 400);
   }
 });
@@ -38,7 +39,8 @@ auth.post('/register', async (c) => {
 auth.post('/login', async (c) => {
   try {
     const { email, password } = await c.req.json();
-
+    console.log('email', email);
+    console.log('password', password);
     const {
       data: { session },
       error,

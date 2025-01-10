@@ -71,10 +71,14 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
   ): Promise<AiRecipe> {
     const prompt = this.generatePrompt(request.preferences, request.mealType);
     const provider = request.provider || 'dify';
-    if (provider === 'dify' || provider === 'ollama') {
+    if (
+      provider === 'dify' ||
+      provider === 'ollama' ||
+      provider === 'deepseek'
+    ) {
       const service = this.getAIService(provider);
       const response = await (
-        service as OllamaService | DifyService
+        service as OllamaService | DifyService | DeepSeekService
       ).createCompletion(prompt);
       return this.parseAIResponse(
         response,

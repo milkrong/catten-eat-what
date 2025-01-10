@@ -60,7 +60,7 @@ export class RecommendationService {
 - 偏好菜系: ${preferences.cuisine_type.join(', ')}
 - 过敏源: ${preferences.allergies.join(', ')}
 - 饮食限制: ${preferences.restrictions.join(', ')}
-- 目标热量: ${preferences.target_calories}卡路里
+- 卡路里范围: ${preferences.calories_min}-${preferences.calories_max}卡路里
 - 最长烹饪时间: ${preferences.max_cooking_time}分钟
 ${mealType ? `- 餐次类型: ${mealType}` : ''}
 `;

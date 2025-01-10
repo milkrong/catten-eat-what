@@ -11,7 +11,8 @@ export interface Database {
             cuisineTypes: string[];
             allergies: string[];
             restrictions: string[];
-            targetCalories: number;
+            calories_min: number;
+            calories_max: number;
             maxCookingTime: number;
           };
         };
@@ -22,7 +23,8 @@ export interface Database {
             cuisineTypes: string[];
             allergies: string[];
             restrictions: string[];
-            targetCalories: number;
+            calories_min: number;
+            calories_max: number;
             maxCookingTime: number;
           };
         };
@@ -33,7 +35,8 @@ export interface Database {
             cuisineTypes: string[];
             allergies: string[];
             restrictions: string[];
-            targetCalories: number;
+            calories_min: number;
+            calories_max: number;
             maxCookingTime: number;
           };
         };

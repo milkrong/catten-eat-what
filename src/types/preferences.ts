@@ -3,7 +3,8 @@ export interface DietaryPreferences {
   cuisine_type: string[];
   allergies: string[];
   restrictions: string[];
-  target_calories: number;
+  calories_min: number;
+  calories_max: number;
   max_cooking_time: number;
   meals_per_day: number;
 }

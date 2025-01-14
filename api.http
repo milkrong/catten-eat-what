@@ -186,7 +186,8 @@ Content-Type: application/json
     "cuisine_type": [ "川菜" ],
     "allergies": [ "花生" ],
     "restrictions": [ "无麸质" ],
-    "target_calories": 2000,
+    "calories_min": 1800,
+    "calories_max": 2200,
     "max_cooking_time": 45,
     "meals_per_day": 3
   },
@@ -200,13 +201,14 @@ Content-Type: application/json
 
 {
   "preferences": {
-    "cuisineTypes": ["川菜", "粤菜"],
-    "dietTypes": ["均衡"],
-    "maxCookingTime": 45,
-    "caloriesPerDay": 2000,
-    "mealsPerDay": 3,
+    "diet_type": ["均衡"],
+    "cuisine_type": ["川菜", "粤菜"],
     "allergies": [],
-    "restrictions": []
+    "restrictions": [],
+    "calories_min": 1800,
+    "calories_max": 2200,
+    "max_cooking_time": 45,
+    "meals_per_day": 3
   },
   "provider": "ollama"
 }
@@ -218,13 +220,14 @@ Content-Type: application/json
 
 {
   "preferences": {
-    "cuisineTypes": ["chinese", "western", "japanese"],
-    "dietTypes": ["balanced"],
-    "maxCookingTime": 45,
-    "caloriesPerDay": 2000,
-    "mealsPerDay": 3,
+    "diet_type": ["均衡"],
+    "cuisine_type": ["中餐", "西餐", "日料"],
     "allergies": [],
-    "restrictions": []
+    "restrictions": [],
+    "calories_min": 1800,
+    "calories_max": 2200,
+    "max_cooking_time": 45,
+    "meals_per_day": 3
   },
   "provider": "ollama"
 }

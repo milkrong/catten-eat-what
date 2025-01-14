@@ -117,7 +117,7 @@ app.get('/preferences', async (c) => {
 app.put('/preferences', async (c) => {
   const userId = c.get('userId');
   const updates = await c.req.json();
-
+  console.log('updates', updates);
   const { data: preferences, error } = await supabase
     .from('preferences')
     .upsert({
@@ -129,6 +129,7 @@ app.put('/preferences', async (c) => {
     .single();
 
   if (error) {
+    console.error(error);
     return c.json({ error: error.message }, 500);
   }
 

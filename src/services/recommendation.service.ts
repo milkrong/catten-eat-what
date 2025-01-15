@@ -8,7 +8,16 @@ import {
 } from '../types/preferences';
 import { Recipe } from '../types/recipe';
 
-type AiRecipe = Omit<Recipe, 'id' | 'created_by' | 'created_at' | 'updated_at'>;
+type AiRecipe = Omit<
+  Recipe,
+  | 'id'
+  | 'created_by'
+  | 'created_at'
+  | 'updated_at'
+  | 'description'
+  | 'image_url'
+  | 'views'
+>;
 type AIProvider = 'coze' | 'dify' | 'ollama' | 'deepseek';
 
 export class RecommendationService {
@@ -56,10 +65,10 @@ export class RecommendationService {
     mealType?: string
   ): string {
     return `基于以下用户偏好生成推荐食谱:
-- 饮食类型: ${preferences.diet_type.join(', ')}
-- 偏好菜系: ${preferences.cuisine_type.join(', ')}
-- 过敏源: ${preferences.allergies.join(', ')}
-- 饮食限制: ${preferences.restrictions.join(', ')}
+- 饮食类型: ${preferences.diet_type?.join(', ') || ''}
+- 偏好菜系: ${preferences.cuisine_type?.join(', ') || ''}
+- 过敏源: ${preferences.allergies?.join(', ') || ''}
+- 饮食限制: ${preferences.restrictions?.join(', ') || ''}
 - 卡路里范围: ${preferences.calories_min}-${preferences.calories_max}卡路里
 - 最长烹饪时间: ${preferences.max_cooking_time}分钟
 ${mealType ? `- 餐次类型: ${mealType}` : ''}
@@ -82,8 +91,8 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
       ).createCompletion(prompt);
       return this.parseAIResponse(
         response,
-        request.preferences.cuisine_type,
-        request.preferences.diet_type
+        request.preferences.cuisine_type || [],
+        request.preferences.diet_type || []
       );
     }
 
@@ -110,8 +119,8 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
 
     return this.parseAIResponse(
       answerMessage.content,
-      request.preferences.cuisine_type,
-      request.preferences.diet_type
+      request.preferences.cuisine_type || [],
+      request.preferences.diet_type || []
     );
   }
 
@@ -264,8 +273,8 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
 
     return this.parseAIResponse(
       fullResponse,
-      request.preferences.cuisine_type,
-      request.preferences.diet_type
+      request.preferences.cuisine_type || [],
+      request.preferences.diet_type || []
     );
   }
 

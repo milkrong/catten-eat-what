@@ -1,26 +1,41 @@
-// src/types/recipe.ts
-import { Ingredient, Step, NutritionFacts } from './index';
-
 export interface Recipe {
   id: string;
   name: string;
-  description?: string;
-  ingredients: Ingredient[];
-  steps: Step[];
-  calories: number;
-  cooking_time: number;
-  nutrition_facts: NutritionFacts;
-  cuisine_type: string[];
-  diet_type: string[];
-  image_url?: string;
-  created_by: string; // 添加 created_by 字段
-  views?: number; // 添加可选的 views 字段
-  created_at: string;
-  updated_at: string;
+  description: string | null;
+  ingredients: Ingredient[] | null;
+  steps: Step[] | null;
+  calories: number | null;
+  cooking_time: number | null;
+  nutrition_facts: NutritionFacts | null;
+  cuisine_type: string[] | null;
+  diet_type: string[] | null;
+  image_url: string | null;
+  created_by: string | null;
+  views: number | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface RecipeFilters {
   cuisineType?: string;
   maxCookingTime?: number;
   dietType?: string[];
+}
+
+export interface Ingredient {
+  name: string;
+  amount: number;
+  unit: string;
+}
+
+export interface Step {
+  order: number;
+  description: string;
+}
+
+export interface NutritionFacts {
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
 }

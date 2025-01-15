@@ -105,6 +105,9 @@ export class DeepSeekService {
 
   private validateRecipe(recipe: Recipe): void {
     // Validate ingredients
+    if (!recipe.ingredients) {
+      throw new Error('Ingredients are required');
+    }
     for (const ingredient of recipe.ingredients) {
       if (typeof ingredient.amount !== 'number') {
         throw new Error(
@@ -151,10 +154,10 @@ export class DeepSeekService {
     // Validate nutrition facts
     const { nutrition_facts } = recipe;
     if (
-      typeof nutrition_facts.protein !== 'number' ||
-      typeof nutrition_facts.fat !== 'number' ||
-      typeof nutrition_facts.carbs !== 'number' ||
-      typeof nutrition_facts.fiber !== 'number'
+      typeof nutrition_facts?.protein !== 'number' ||
+      typeof nutrition_facts?.fat !== 'number' ||
+      typeof nutrition_facts?.carbs !== 'number' ||
+      typeof nutrition_facts?.fiber !== 'number'
     ) {
       throw new Error('Invalid nutrition_facts: all values must be numbers');
     }

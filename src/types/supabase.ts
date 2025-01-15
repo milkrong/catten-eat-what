@@ -96,9 +96,11 @@ export type Database = {
           calories_max: number | null;
           calories_min: number | null;
           created_at: string | null;
+          cuisine_type: string[] | null;
           diet_type: string[] | null;
           id: string;
           max_cooking_time: number | null;
+          meals_per_day: number | null;
           restrictions: string[] | null;
           updated_at: string | null;
         };
@@ -107,9 +109,11 @@ export type Database = {
           calories_max?: number | null;
           calories_min?: number | null;
           created_at?: string | null;
+          cuisine_type?: string[] | null;
           diet_type?: string[] | null;
           id: string;
           max_cooking_time?: number | null;
+          meals_per_day?: number | null;
           restrictions?: string[] | null;
           updated_at?: string | null;
         };
@@ -118,9 +122,11 @@ export type Database = {
           calories_max?: number | null;
           calories_min?: number | null;
           created_at?: string | null;
+          cuisine_type?: string[] | null;
           diet_type?: string[] | null;
           id?: string;
           max_cooking_time?: number | null;
+          meals_per_day?: number | null;
           restrictions?: string[] | null;
           updated_at?: string | null;
         };
@@ -164,7 +170,7 @@ export type Database = {
           cooking_time: number | null;
           created_at: string | null;
           created_by: string | null;
-          cuisine_type: string | null;
+          cuisine_type: string[] | null;
           description: string | null;
           diet_type: string[] | null;
           id: string;
@@ -219,33 +225,6 @@ export type Database = {
             referencedColumns: ['id'];
           }
         ];
-      };
-      users: {
-        Row: {
-          clerk_id: string;
-          created_at: string | null;
-          email: string | null;
-          id: number;
-          updated_at: string | null;
-          username: string | null;
-        };
-        Insert: {
-          clerk_id: string;
-          created_at?: string | null;
-          email?: string | null;
-          id?: number;
-          updated_at?: string | null;
-          username?: string | null;
-        };
-        Update: {
-          clerk_id?: string;
-          created_at?: string | null;
-          email?: string | null;
-          id?: number;
-          updated_at?: string | null;
-          username?: string | null;
-        };
-        Relationships: [];
       };
     };
     Views: {

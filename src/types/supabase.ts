@@ -187,7 +187,7 @@ export type Database = {
           cooking_time?: number | null;
           created_at?: string | null;
           created_by?: string | null;
-          cuisine_type?: string | null;
+          cuisine_type?: string[] | null;
           description?: string | null;
           diet_type?: string[] | null;
           id?: string;
@@ -204,7 +204,7 @@ export type Database = {
           cooking_time?: number | null;
           created_at?: string | null;
           created_by?: string | null;
-          cuisine_type?: string | null;
+          cuisine_type?: string[] | null;
           description?: string | null;
           diet_type?: string[] | null;
           id?: string;

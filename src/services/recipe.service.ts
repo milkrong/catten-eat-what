@@ -2,7 +2,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Recipe } from '../types/recipe';
 import { RecipeFilters } from '../types/recipe';
-import type { Database } from '../types/database';
+import type { Database, Json } from '../types/supabase';
 
 interface RecommendationParams {
   dietTypes: string[];
@@ -105,6 +105,9 @@ export class RecipeService {
       .insert([
         {
           ...recipe,
+          nutrition_facts: recipe.nutrition_facts as Json,
+          ingredients: recipe.ingredients as Json,
+          steps: recipe.steps as Json,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -124,7 +127,10 @@ export class RecipeService {
       .from('recipes')
       .update({
         ...updates,
+        nutrition_facts: updates.nutrition_facts as Json,
+        ingredients: updates.ingredients as Json,
         updated_at: new Date().toISOString(),
+        steps: updates.steps as Json,
       })
       .eq('id', id)
       .select()

@@ -2,7 +2,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { MealPlan } from '../types';
 import { HTTPException } from 'hono/http-exception';
-import type { Database } from '../types/database';
+import type { Database } from '../types/supabase';
 import { RecipeService } from './recipe.service';
 
 export class MealPlanService {
@@ -19,9 +19,9 @@ export class MealPlanService {
         .select(
           `
           *,
-          recipes:recipe_id (
+          recipe:recipe_id (
             *,
-            profiles:created_by (
+            profile:created_by (
               username,
               avatar_url
             )
@@ -185,6 +185,9 @@ export class MealPlanService {
           usedRecipeIds.push(recipe.id);
 
           // 创建膳食计划
+          if (!userId || !recipe.id) {
+            throw new Error('Invalid user_id or recipe_id');
+          }
           const mealPlan = await this.createMealPlan({
             user_id: userId,
             date: currentDate.toISOString(),
@@ -192,7 +195,11 @@ export class MealPlanService {
             recipe_id: recipe.id,
           });
 
-          mealPlans.push(mealPlan);
+          mealPlans.push({
+            ...mealPlan,
+            user_id: userId,
+            recipe_id: recipe.id,
+          });
         }
       }
 

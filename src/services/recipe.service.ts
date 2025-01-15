@@ -94,7 +94,10 @@ export class RecipeService {
   }
 
   async createRecipe(
-    recipe: Omit<Recipe, 'id' | 'created_at' | 'updated_at'>
+    recipe: Omit<
+      Recipe,
+      'id' | 'created_at' | 'updated_at' | 'image_url' | 'views'
+    >
   ): Promise<Recipe> {
     console.log('recipe', recipe);
     const { data, error } = await this.supabase

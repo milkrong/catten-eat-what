@@ -1,12 +1,14 @@
 export interface DietaryPreferences {
-  diet_type: ('regular' | 'vegetarian' | 'vegan' | 'keto' | 'paleo')[];
-  cuisine_type: string[];
-  allergies: string[];
-  restrictions: string[];
-  calories_min: number;
-  calories_max: number;
-  max_cooking_time: number;
-  meals_per_day: number;
+  id: string;
+  diet_type: string[] | null;
+  cuisine_type: string[] | null;
+  allergies: string[] | null;
+  restrictions: string[] | null;
+  calories_min: number | null;
+  calories_max: number | null;
+  max_cooking_time: number | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface RecommendationRequest {

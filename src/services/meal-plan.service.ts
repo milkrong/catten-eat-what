@@ -48,9 +48,9 @@ export class MealPlanService {
         .select(
           `
           *,
-          recipes:recipe_id (
+          recipe:recipe_id (
             *,
-            profiles:created_by (
+            profile:created_by (
               username,
               avatar_url
             )
@@ -78,9 +78,9 @@ export class MealPlanService {
         .select(
           `
           *,
-          recipes:recipe_id (
+          recipe:recipe_id (
             *,
-            profiles:created_by (
+            profile:created_by (
               username,
               avatar_url
             )
@@ -106,9 +106,9 @@ export class MealPlanService {
         .select(
           `
           *,
-          recipes:recipe_id (
+          recipe:recipe_id (
             *,
-            profiles:created_by (
+            profile:created_by (
               username,
               avatar_url
             )

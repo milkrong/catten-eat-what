@@ -10,9 +10,9 @@ POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
 {
-  "email": "test@example.com",
-  "password": "your-password",
-  "username": "testuser"
+  "email": "email",
+  "password": "password",
+  "username": "username"
 }
 
 ### 用户登录
@@ -20,8 +20,8 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "milkrong121@outlook.com",
-  "password": "Milkkai5315!?!"
+  "email": "email",
+  "password": "password"
 }
 
 ### 获取当前用户信息

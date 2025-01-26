@@ -89,11 +89,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
       const response = await (
         service as OllamaService | DifyService | DeepSeekService
       ).createCompletion(prompt);
-      return this.parseAIResponse(
-        response,
-        request.preferences.cuisine_type || [],
-        request.preferences.diet_type || []
-      );
+      return this.parseAIResponse(response);
     }
 
     // Default to Coze service
@@ -117,20 +113,12 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
       throw new Error('No answer message found in response');
     }
 
-    return this.parseAIResponse(
-      answerMessage.content,
-      request.preferences.cuisine_type || [],
-      request.preferences.diet_type || []
-    );
+    return this.parseAIResponse(answerMessage.content);
   }
 
-  private parseAIResponse(
-    content: string,
-    cuisine_type: string[],
-    diet_type: string[]
-  ): AiRecipe {
+  private parseAIResponse(content: string): AiRecipe {
     try {
-      console.log('>>2', content, cuisine_type, diet_type);
+      console.log('>>2', content);
       // 移除可能的 "```json" 标记
       const cleanContent = content
         .replace(/^```json\n/, '')
@@ -153,8 +141,8 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
           fiber: rawRecipe.nutrition_facts.fiber,
         },
         steps: rawRecipe.steps,
-        cuisine_type,
-        diet_type,
+        cuisine_type: rawRecipe.cuisine_type,
+        diet_type: rawRecipe.diet_type,
       };
 
       // 验证必要字段
@@ -271,11 +259,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
       );
     }
 
-    return this.parseAIResponse(
-      fullResponse,
-      request.preferences.cuisine_type || [],
-      request.preferences.diet_type || []
-    );
+    return this.parseAIResponse(fullResponse);
   }
 
   async getStreamingSingleMealRecommendation(

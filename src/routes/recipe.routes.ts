@@ -96,6 +96,7 @@ app.post('/', zValidator('json', createRecipeSchema), async (c) => {
       cuisine_type: recipeData.cuisine_type,
       diet_type: recipeData.diet_type,
       created_by: userId, // 确保这里的 userId 是 UUID 格式
+      img: recipeData.img,
     });
 
     return c.json(recipe, 201);

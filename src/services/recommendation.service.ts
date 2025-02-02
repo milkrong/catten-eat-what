@@ -143,6 +143,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
         steps: rawRecipe.steps,
         cuisine_type: rawRecipe.cuisine_type,
         diet_type: rawRecipe.diet_type,
+        img: rawRecipe.img,
       };
 
       // 验证必要字段
@@ -237,6 +238,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
       await this.cozeService.createStreamCompletion(
         [{ role: 'user', content: prompt }],
         (chunk) => {
+          console.log('>>1', chunk);
           const content = chunk.choices[0]?.delta?.content;
           if (content) {
             fullResponse += content;

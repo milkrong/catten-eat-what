@@ -19,12 +19,8 @@ export class MealPlanService {
         .select(
           `
           *,
-          recipe:recipe_id (
-            *,
-            profile:created_by (
-              username,
-              avatar_url
-            )
+          recipes:recipe_id (
+            *
           )
         `
         )
@@ -49,11 +45,7 @@ export class MealPlanService {
           `
           *,
           recipe:recipe_id (
-            *,
-            profile:created_by (
-              username,
-              avatar_url
-            )
+            *
           )
         `
         )
@@ -79,11 +71,7 @@ export class MealPlanService {
           `
           *,
           recipe:recipe_id (
-            *,
-            profile:created_by (
-              username,
-              avatar_url
-            )
+            *
           )
         `
         )
@@ -103,18 +91,7 @@ export class MealPlanService {
         .from('meal_plans')
         .update(mealPlan)
         .eq('id', id)
-        .select(
-          `
-          *,
-          recipe:recipe_id (
-            *,
-            profile:created_by (
-              username,
-              avatar_url
-            )
-          )
-        `
-        )
+        .select('*')
         .single();
 
       if (error) throw error;

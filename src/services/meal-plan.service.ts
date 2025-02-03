@@ -19,7 +19,7 @@ export class MealPlanService {
         .select(
           `
           *,
-          recipes:recipe_id (
+          recipe:recipe_id (
             *
           )
         `
@@ -32,7 +32,7 @@ export class MealPlanService {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Get meal plans error:', error);
+      console.error('Get meal plans errors:', error);
       throw new HTTPException(500, { message: '获取膳食计划失败' });
     }
   }

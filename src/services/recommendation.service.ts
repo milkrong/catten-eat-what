@@ -1,7 +1,7 @@
 import { CozeService } from './coze.service';
 import { DifyService } from './dify.service';
 import { OllamaService } from './ollama.service';
-import { DeepSeekService } from './deepseek.service';
+import { OpenAIService } from './openai-like.service';
 import {
   DietaryPreferences,
   RecommendationRequest,
@@ -18,13 +18,14 @@ type AiRecipe = Omit<
   | 'image_url'
   | 'views'
 >;
-type AIProvider = 'coze' | 'dify' | 'ollama' | 'deepseek';
+type AIProvider = 'coze' | 'dify' | 'ollama' | 'deepseek' | 'siliconflow';
 
 export class RecommendationService {
   private cozeService: CozeService;
   private difyService: DifyService;
   private ollamaService: OllamaService;
-  private deepseekService: DeepSeekService;
+  private deepseekService: OpenAIService;
+  private siliconflowService: OpenAIService;
 
   constructor() {
     this.cozeService = new CozeService({
@@ -40,10 +41,15 @@ export class RecommendationService {
       apiEndpoint: process.env.OLLAMA_API_ENDPOINT || 'http://localhost:11434',
       model: process.env.OLLAMA_MODEL || 'llama2',
     });
-    this.deepseekService = new DeepSeekService({
+    this.deepseekService = new OpenAIService({
       apiKey: process.env.DEEPSEEK_API_KEY!,
       apiEndpoint: process.env.DEEPSEEK_API_ENDPOINT,
       model: process.env.DEEPSEEK_MODEL,
+    });
+    this.siliconflowService = new OpenAIService({
+      apiKey: process.env.SILICONFLOW_API_KEY!,
+      apiEndpoint: process.env.SILICONFLOW_API_ENDPOINT!,
+      model: process.env.SILICONFLOW_MODEL!,
     });
   }
 
@@ -55,6 +61,8 @@ export class RecommendationService {
         return this.ollamaService;
       case 'deepseek':
         return this.deepseekService;
+      case 'siliconflow':
+        return this.siliconflowService;
       default:
         return this.cozeService;
     }
@@ -83,11 +91,12 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
     if (
       provider === 'dify' ||
       provider === 'ollama' ||
-      provider === 'deepseek'
+      provider === 'deepseek' ||
+      provider === 'siliconflow'
     ) {
       const service = this.getAIService(provider);
       const response = await (
-        service as OllamaService | DifyService | DeepSeekService
+        service as OllamaService | DifyService | OpenAIService
       ).createCompletion(prompt);
       return this.parseAIResponse(response);
     }

@@ -15,5 +15,5 @@ export interface RecommendationRequest {
   preferences: DietaryPreferences;
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   excludeRecipes?: string[];
-  provider?: 'dify' | 'coze' | 'ollama' | 'deepseek';
+  provider?: 'dify' | 'coze' | 'ollama' | 'deepseek' | 'siliconflow';
 }

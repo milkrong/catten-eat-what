@@ -1,17 +1,17 @@
 import { Recipe } from '../types/recipe';
 
-interface DeepSeekServiceConfig {
+interface OpenAIConfig {
   apiKey: string;
   apiEndpoint?: string;
   model?: string;
 }
 
-interface DeepSeekMessage {
+interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
-interface DeepSeekResponse {
+interface OpenAIResponse {
   id: string;
   object: string;
   created: number;
@@ -31,7 +31,7 @@ interface DeepSeekResponse {
   };
 }
 
-interface DeepSeekStreamResponse {
+interface OpenAIStreamResponse {
   id: string;
   object: string;
   created: number;
@@ -94,12 +94,12 @@ const SYSTEM_PROMPT = `# Role
 - 所有食材必须有明确的数量单位，不允许空单位。
 - 所有数值必须为纯数字，不允许使用分数或文字描述。`;
 
-export class DeepSeekService {
+export class OpenAIService {
   private apiKey: string;
   private apiEndpoint: string;
   private model: string;
 
-  constructor(config: DeepSeekServiceConfig) {
+  constructor(config: OpenAIConfig) {
     this.apiKey = config.apiKey;
     this.apiEndpoint = config.apiEndpoint || 'https://api.deepseek.com';
     this.model = config.model || 'deepseek-chat';
@@ -187,7 +187,7 @@ export class DeepSeekService {
         throw new Error(`DeepSeek API error: ${response.statusText}`);
       }
 
-      const data = (await response.json()) as DeepSeekResponse;
+      const data = (await response.json()) as OpenAIResponse;
       const content = data.choices[0]?.message?.content;
 
       if (!content) {
@@ -256,7 +256,7 @@ export class DeepSeekService {
             if (jsonStr === '[DONE]') continue;
 
             try {
-              const data = JSON.parse(jsonStr) as DeepSeekStreamResponse;
+              const data = JSON.parse(jsonStr) as OpenAIStreamResponse;
               const content = data.choices[0]?.delta?.content;
               if (content) {
                 onChunk(content);

@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
 import { RecommendationService } from '../services/recommendation.service';
+import { ImageService } from '../services/image.service';
 
 const recommendationRoutes = new Hono();
 const recommendationService = new RecommendationService();
+const imageService = new ImageService();
 
 recommendationRoutes.post('/single', async (c) => {
   const request = await c.req.json();
@@ -60,6 +62,26 @@ recommendationRoutes.post('/single/stream', async (c) => {
       Connection: 'keep-alive',
     },
   });
+});
+
+recommendationRoutes.post('/generate-image', async (c) => {
+  const { recipeName, description, image_size } = await c.req.json();
+
+  if (!recipeName || !description) {
+    return c.json({ error: 'Recipe name and description are required' }, 400);
+  }
+
+  try {
+    const imageUrl = await imageService.generateRecipeImage(
+      recipeName,
+      description,
+      image_size
+    );
+    return c.json({ imageUrl });
+  } catch (error) {
+    console.error('Error generating recipe image:', error);
+    return c.json({ error: 'Failed to generate image' }, 500);
+  }
 });
 
 export { recommendationRoutes };

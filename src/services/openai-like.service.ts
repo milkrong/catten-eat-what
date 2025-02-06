@@ -1,14 +1,9 @@
-import { Recipe } from '../types/recipe';
+import type { Recipe } from "../types/recipe";
 
 interface OpenAIConfig {
   apiKey: string;
-  apiEndpoint?: string;
+  apiEndpoint: string;
   model?: string;
-}
-
-interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
 }
 
 interface OpenAIResponse {
@@ -97,46 +92,48 @@ const SYSTEM_PROMPT = `# Role
 export class OpenAIService {
   private apiKey: string;
   private apiEndpoint: string;
-  private model: string;
+  private model?: string;
 
   constructor(config: OpenAIConfig) {
     this.apiKey = config.apiKey;
-    this.apiEndpoint = config.apiEndpoint || 'https://api.deepseek.com';
-    this.model = config.model || 'deepseek-chat';
+    this.apiEndpoint = config.apiEndpoint;
+    if (config.model) {
+      this.model = config.model;
+    }
   }
 
   private validateRecipe(recipe: Recipe): void {
     // Validate ingredients
     if (!recipe.ingredients) {
-      throw new Error('Ingredients are required');
+      throw new Error("Ingredients are required");
     }
     for (const ingredient of recipe.ingredients) {
-      if (typeof ingredient.amount !== 'number') {
+      if (typeof ingredient.amount !== "number") {
         throw new Error(
           `Invalid amount for ingredient ${ingredient.name}: must be a number`
         );
       }
       if (
         ![
-          '克',
-          '千克',
-          '毫升',
-          '升',
-          '个',
-          '勺',
-          '杯',
-          '片',
-          '根',
-          '块',
-          '粒',
-          '包',
-          '袋',
-          '瓶',
-          '盒',
-          '条',
-          '瓣',
-          '茶匙',
-          '汤匙',
+          "克",
+          "千克",
+          "毫升",
+          "升",
+          "个",
+          "勺",
+          "杯",
+          "片",
+          "根",
+          "块",
+          "粒",
+          "包",
+          "袋",
+          "瓶",
+          "盒",
+          "条",
+          "瓣",
+          "茶匙",
+          "汤匙",
         ].includes(ingredient.unit)
       ) {
         throw new Error(
@@ -146,58 +143,58 @@ export class OpenAIService {
     }
 
     // Validate numeric fields
-    if (typeof recipe.calories !== 'number') {
-      throw new Error('Invalid calories: must be a number');
+    if (typeof recipe.calories !== "number") {
+      throw new Error("Invalid calories: must be a number");
     }
-    if (typeof recipe.cooking_time !== 'number') {
-      throw new Error('Invalid cooking_time: must be a number');
+    if (typeof recipe.cooking_time !== "number") {
+      throw new Error("Invalid cooking_time: must be a number");
     }
 
     // Validate nutrition facts
     const { nutrition_facts } = recipe;
     if (
-      typeof nutrition_facts?.protein !== 'number' ||
-      typeof nutrition_facts?.fat !== 'number' ||
-      typeof nutrition_facts?.carbs !== 'number' ||
-      typeof nutrition_facts?.fiber !== 'number'
+      typeof nutrition_facts?.protein !== "number" ||
+      typeof nutrition_facts?.fat !== "number" ||
+      typeof nutrition_facts?.carbs !== "number" ||
+      typeof nutrition_facts?.fiber !== "number"
     ) {
-      throw new Error('Invalid nutrition_facts: all values must be numbers');
+      throw new Error("Invalid nutrition_facts: all values must be numbers");
     }
   }
 
   async createCompletion(prompt: string): Promise<string> {
     try {
       const response = await fetch(`${this.apiEndpoint}/chat/completions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
           model: this.model,
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: prompt },
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: prompt },
           ],
           stream: false,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`DeepSeek API error: ${response.statusText}`);
+        throw new Error(`LLM API error: ${response.statusText}`);
       }
 
       const data = (await response.json()) as OpenAIResponse;
-      const content = data.choices[0]?.message?.content;
+      const content = data?.choices[0]?.message?.content;
 
       if (!content) {
-        throw new Error('No content in response');
+        throw new Error("No content in response");
       }
 
       // Extract JSON from the response
       const match = content.match(/```json\n([\s\S]*?)\n```/);
       if (!match) {
-        throw new Error('Invalid response format: JSON not found');
+        throw new Error("Invalid response format: JSON not found");
       }
 
       const recipe = JSON.parse(match[1]) as Recipe;
@@ -207,7 +204,7 @@ export class OpenAIService {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error('DeepSeek API error: Unknown error occurred');
+      throw new Error("LLM API error: Unknown error occurred");
     }
   }
 
@@ -217,27 +214,27 @@ export class OpenAIService {
   ): Promise<void> {
     try {
       const response = await fetch(`${this.apiEndpoint}/chat/completions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
           model: this.model,
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: prompt },
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: prompt },
           ],
           stream: true,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`DeepSeek API error: ${response.statusText}`);
+        throw new Error(`LLM API error: ${response.statusText}`);
       }
 
       if (!response.body) {
-        throw new Error('DeepSeek API error: No response body received');
+        throw new Error("LLM API error: No response body received");
       }
 
       const reader = response.body.getReader();
@@ -245,15 +242,19 @@ export class OpenAIService {
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          break;
+        }
 
         const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter((line) => line.trim() !== '');
+        const lines = chunk.split("\n").filter((line) => line.trim() !== "");
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith("data: ")) {
             const jsonStr = line.slice(6);
-            if (jsonStr === '[DONE]') continue;
+            if (jsonStr === "[DONE]") {
+              continue;
+            }
 
             try {
               const data = JSON.parse(jsonStr) as OpenAIStreamResponse;
@@ -262,7 +263,7 @@ export class OpenAIService {
                 onChunk(content);
               }
             } catch (e) {
-              console.error('Error parsing DeepSeek response:', e);
+              console.error("Error parsing LLM response:", e);
             }
           }
         }
@@ -271,7 +272,7 @@ export class OpenAIService {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error('DeepSeek API error: Unknown error occurred');
+      throw new Error("LLM API error: Unknown error occurred");
     }
   }
 }

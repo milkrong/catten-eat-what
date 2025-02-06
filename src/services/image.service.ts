@@ -10,22 +10,22 @@ export class ImageService {
 
   constructor() {
     this.apiKey = process.env.SILICONFLOW_API_KEY!;
-    this.apiUrl = process.env.SILICONFLOW_API_ENDPOINT! + '/images/generations';
+    this.apiUrl = `${process.env.SILICONFLOW_API_ENDPOINT!}/images/generations`;
   }
 
   async generateRecipeImage(
     recipeName: string,
     description: string,
-    image_size: string = '512x512'
+    image_size = "512x512"
   ): Promise<string> {
     const prompt = `A delicious looking dish of ${recipeName}. ${description}. Food photography style, professional lighting, high resolution, appetizing presentation`;
 
     try {
       const response = await fetch(this.apiUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model: process.env.SILICONFLOW_PICTURE_MODEL!,
@@ -44,7 +44,7 @@ export class ImageService {
       const result = (await response.json()) as ImageGenerationResponse;
       return result.data[0].url;
     } catch (error) {
-      console.error('Error generating image:', error);
+      console.error("Error generating image:", error);
       throw error;
     }
   }

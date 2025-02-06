@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS public.settings (
     user_id uuid NOT NULL UNIQUE REFERENCES public.profiles(id),
     llm_service text NOT NULL CHECK (llm_service IN ('deepseek', 'coze', 'siliconflow', 'custom')),
     model_name text,
-    is_paid boolean DEFAULT true,
+    is_paid boolean DEFAULT false,
     api_key text,
     api_endpoint text,
     created_at timestamptz DEFAULT now(),

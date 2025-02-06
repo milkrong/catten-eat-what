@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { supabase } from "../config/supabase";
-import { Variables } from "../types/hono";
+import type { Variables } from "../types/hono";
 
 const app = new Hono<{ Variables: Variables }>();
 
@@ -15,7 +15,16 @@ app.get("/info", async (c) => {
       `
       *,
       preferences:preferences!preferences_id_fkey(*),
-      settings:settings!user_id(*),
+      settings:settings!user_id(
+        id,
+        user_id,
+        llm_service,
+        model_name,
+        is_paid,
+        api_endpoint,
+        created_at,
+        updated_at
+      ),
       favorites:favorites!favorites_user_id_fkey(
         id,
         recipe_id,
@@ -182,7 +191,9 @@ app.get("/settings", async (c) => {
 
   const { data: settings, error } = await supabase
     .from("settings")
-    .select("*")
+    .select(
+      "id, user_id, llm_service, model_name, is_paid, api_endpoint, created_at, updated_at"
+    )
     .eq("user_id", userId)
     .single();
 
@@ -205,7 +216,9 @@ app.put("/settings", async (c) => {
       ...updates,
       updated_at: new Date().toISOString(),
     })
-    .select()
+    .select(
+      "id, user_id, llm_service, model_name, is_paid, api_endpoint, created_at, updated_at"
+    )
     .single();
 
   if (error) {

@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type LLMService = "deepseek" | "coze" | "siliconflow";
+export type LLMService = "deepseek" | "coze" | "siliconflow" | "custom";
 
 export interface Database {
   public: {
@@ -233,6 +233,10 @@ export interface Database {
           id: string;
           user_id: string;
           llm_service: LLMService;
+          model_name: string | null;
+          is_paid: boolean;
+          api_key: string | null;
+          api_endpoint: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -240,6 +244,10 @@ export interface Database {
           id?: string;
           user_id: string;
           llm_service: LLMService;
+          model_name?: string | null;
+          is_paid?: boolean;
+          api_key?: string | null;
+          api_endpoint?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -247,6 +255,10 @@ export interface Database {
           id?: string;
           user_id?: string;
           llm_service?: LLMService;
+          model_name?: string | null;
+          is_paid?: boolean;
+          api_key?: string | null;
+          api_endpoint?: string | null;
           created_at?: string;
           updated_at?: string;
         };

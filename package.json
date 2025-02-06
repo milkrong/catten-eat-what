@@ -23,8 +23,9 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "bun-types": "latest",
+    "@biomejs/biome": "^1.9.4",
     "@types/node": "^20.10.0",
+    "bun-types": "latest",
     "vitest": "^2.1.0"
   }
 }

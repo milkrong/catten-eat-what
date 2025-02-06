@@ -217,7 +217,7 @@ Content-Type: application/json
   "preferences": {
     "diet_type": ["均衡"],
     "cuisine_type": ["中餐"],
-    "allergies": [],
+    "allergies": ["西兰花"],
     "restrictions": ["低蛋白质"],
     "calories_min": 1800,
     "calories_max": 2200,
@@ -282,6 +282,17 @@ Content-Type: application/json
     "meals_per_day": 3
   },
   "provider": "deepseek"
+}
+
+### 获取单餐推荐图片
+POST {{baseUrl}}/recommendations/generate-image
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "recipeName": "麻婆豆腐",
+  "description": "麻婆豆腐是一道经典的川菜，以其麻辣鲜香而闻名。",
+  "image_size": "512x512"
 }
 
 ### 用户相关 API ###

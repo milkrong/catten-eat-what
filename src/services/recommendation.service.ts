@@ -1,49 +1,48 @@
-import { CozeService } from './coze.service';
-import { DifyService } from './dify.service';
-import { OllamaService } from './ollama.service';
-import { OpenAIService } from './openai-like.service';
-import {
+import { CozeService } from "./coze.service";
+import { OpenAIService } from "./openai-like.service";
+import type {
   DietaryPreferences,
   RecommendationRequest,
-} from '../types/preferences';
-import { Recipe } from '../types/recipe';
+} from "../types/preferences";
+import type { Recipe } from "../types/recipe";
+import { supabase } from "../config/supabase";
 
 type AiRecipe = Omit<
   Recipe,
-  | 'id'
-  | 'created_by'
-  | 'created_at'
-  | 'updated_at'
-  | 'description'
-  | 'image_url'
-  | 'views'
+  | "id"
+  | "created_by"
+  | "created_at"
+  | "updated_at"
+  | "description"
+  | "image_url"
+  | "views"
 >;
-type AIProvider = 'coze' | 'dify' | 'ollama' | 'deepseek' | 'siliconflow';
+type AIProvider = "coze" | "deepseek" | "siliconflow" | "custom";
+
+interface UserSettings {
+  llm_service: AIProvider;
+  model_name?: string;
+  is_paid?: boolean;
+  api_key?: string;
+  api_endpoint?: string;
+}
 
 export class RecommendationService {
   private cozeService: CozeService;
-  private difyService: DifyService;
-  private ollamaService: OllamaService;
   private deepseekService: OpenAIService;
   private siliconflowService: OpenAIService;
+  private customService: OpenAIService | null = null;
+  private currentUserId: string | null = null;
 
   constructor() {
     this.cozeService = new CozeService({
       apiKey: process.env.COZE_API_KEY!,
       botId: process.env.COZE_BOT_ID!,
-      apiEndpoint: process.env.COZE_API_ENDPOINT || 'https://api.coze.cn/v1',
-    });
-    this.difyService = new DifyService({
-      apiKey: process.env.DIFY_API_KEY!,
-      apiEndpoint: process.env.DIFY_API_ENDPOINT!,
-    });
-    this.ollamaService = new OllamaService({
-      apiEndpoint: process.env.OLLAMA_API_ENDPOINT || 'http://localhost:11434',
-      model: process.env.OLLAMA_MODEL || 'llama2',
+      apiEndpoint: process.env.COZE_API_ENDPOINT || "https://api.coze.cn/v1",
     });
     this.deepseekService = new OpenAIService({
       apiKey: process.env.DEEPSEEK_API_KEY!,
-      apiEndpoint: process.env.DEEPSEEK_API_ENDPOINT,
+      apiEndpoint: process.env.DEEPSEEK_API_ENDPOINT!,
       model: process.env.DEEPSEEK_MODEL,
     });
     this.siliconflowService = new OpenAIService({
@@ -53,15 +52,51 @@ export class RecommendationService {
     });
   }
 
-  private getAIService(provider: AIProvider = 'coze') {
+  private async initializeCustomService(userId: string) {
+    if (this.currentUserId === userId && this.customService) {
+      return;
+    }
+
+    const { data: settings, error } = await supabase
+      .from("settings")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !settings) {
+      this.customService = null;
+      this.currentUserId = null;
+      return;
+    }
+
+    if (
+      settings.llm_service === "custom" &&
+      settings.api_key &&
+      settings.api_endpoint &&
+      settings.model_name
+    ) {
+      this.customService = new OpenAIService({
+        apiKey: settings.api_key,
+        apiEndpoint: settings.api_endpoint,
+        model: settings.model_name,
+      });
+      this.currentUserId = userId;
+    }
+  }
+
+  private async getAIService(provider: AIProvider = "coze", userId?: string) {
+    if (provider === "custom" && userId) {
+      await this.initializeCustomService(userId);
+      if (this.customService) {
+        return this.customService;
+      }
+      throw new Error("Custom service not properly configured");
+    }
+
     switch (provider) {
-      case 'dify':
-        return this.difyService;
-      case 'ollama':
-        return this.ollamaService;
-      case 'deepseek':
+      case "deepseek":
         return this.deepseekService;
-      case 'siliconflow':
+      case "siliconflow":
         return this.siliconflowService;
       default:
         return this.cozeService;
@@ -73,13 +108,13 @@ export class RecommendationService {
     mealType?: string
   ): string {
     return `基于以下用户偏好生成推荐食谱:
-- 饮食类型: ${preferences.diet_type?.join(', ') || ''}
-- 偏好菜系: ${preferences.cuisine_type?.join(', ') || ''}
-- 过敏源: ${preferences.allergies?.join(', ') || ''}
-- 饮食限制: ${preferences.restrictions?.join(', ') || ''}
+- 饮食类型: ${preferences.diet_type?.join(", ") || ""}
+- 偏好菜系: ${preferences.cuisine_type?.join(", ") || ""}
+- 过敏源: ${preferences.allergies?.join(", ") || ""}
+- 饮食限制: ${preferences.restrictions?.join(", ") || ""}
 - 卡路里范围: ${preferences.calories_min}-${preferences.calories_max}卡路里
 - 最长烹饪时间: ${preferences.max_cooking_time}分钟
-${mealType ? `- 餐次类型: ${mealType}` : ''}
+${mealType ? `- 餐次类型: ${mealType}` : ""}
 `;
   }
 
@@ -87,24 +122,24 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
     request: RecommendationRequest
   ): Promise<AiRecipe> {
     const prompt = this.generatePrompt(request.preferences, request.mealType);
-    const provider = request.provider || 'dify';
+    const provider = request.provider || "coze";
+
     if (
-      provider === 'dify' ||
-      provider === 'ollama' ||
-      provider === 'deepseek' ||
-      provider === 'siliconflow'
+      provider === "deepseek" ||
+      provider === "siliconflow" ||
+      provider === "custom"
     ) {
-      const service = this.getAIService(provider);
-      const response = await (
-        service as OllamaService | DifyService | OpenAIService
-      ).createCompletion(prompt);
+      const service = await this.getAIService(provider, request.userId);
+      const response = await (service as OpenAIService).createCompletion(
+        prompt
+      );
       return this.parseAIResponse(response);
     }
 
     // Default to Coze service
     const chatResponse = await this.cozeService.createCompletion(
-      [{ role: 'user', content: prompt }],
-      'recommendation-user',
+      [{ role: "user", content: prompt }],
+      "recommendation-user",
       {}
     );
 
@@ -119,7 +154,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
     );
 
     if (!answerMessage) {
-      throw new Error('No answer message found in response');
+      throw new Error("No answer message found in response");
     }
 
     return this.parseAIResponse(answerMessage.content);
@@ -127,14 +162,14 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
 
   private parseAIResponse(content: string): AiRecipe {
     try {
-      console.log('>>2', content);
+      console.log(">>2", content);
       // 移除可能的 "```json" 标记
       const cleanContent = content
-        .replace(/^```json\n/, '')
-        .replace(/\n```$/, '');
+        .replace(/^```json\n/, "")
+        .replace(/\n```$/, "");
 
       // 解析 JSON
-      console.log('>>3', cleanContent);
+      console.log(">>3", cleanContent);
       const rawRecipe = JSON.parse(cleanContent);
 
       // 转换为标准格式
@@ -164,29 +199,29 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
         !recipe.nutrition_facts ||
         !recipe.steps
       ) {
-        throw new Error('Missing required fields in recipe');
+        throw new Error("Missing required fields in recipe");
       }
 
       // 验证所有食材的格式
       for (const ingredient of recipe.ingredients) {
         if (
           !ingredient.name ||
-          typeof ingredient.amount !== 'number' ||
+          typeof ingredient.amount !== "number" ||
           !ingredient.unit
         ) {
-          throw new Error('Invalid ingredient format');
+          throw new Error("Invalid ingredient format");
         }
       }
 
       // 验证营养成分
       const nutrition = recipe.nutrition_facts;
       if (
-        typeof nutrition.protein !== 'number' ||
-        typeof nutrition.fat !== 'number' ||
-        typeof nutrition.carbs !== 'number' ||
-        typeof nutrition.fiber !== 'number'
+        typeof nutrition.protein !== "number" ||
+        typeof nutrition.fat !== "number" ||
+        typeof nutrition.carbs !== "number" ||
+        typeof nutrition.fiber !== "number"
       ) {
-        throw new Error('Invalid nutrition format');
+        throw new Error("Invalid nutrition format");
       }
 
       return recipe;
@@ -194,7 +229,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
       if (error instanceof Error) {
         throw new Error(`Failed to parse recipe: ${error.message}`);
       }
-      throw new Error('Failed to parse recipe: Unknown error');
+      throw new Error("Failed to parse recipe: Unknown error");
     }
   }
 
@@ -208,7 +243,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
     request: RecommendationRequest
   ): Promise<AiRecipe[]> {
     const meals = [];
-    const mealTypes = ['breakfast', 'lunch', 'dinner'] as const;
+    const mealTypes = ["breakfast", "lunch", "dinner"] as const;
 
     for (const mealType of mealTypes) {
       const mealRequest = {
@@ -238,30 +273,30 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
   async getStreamingRecommendation(
     request: RecommendationRequest,
     onChunk: (chunk: string) => void,
-    provider: AIProvider = 'coze'
+    provider: AIProvider = "coze"
   ): Promise<AiRecipe> {
     const prompt = this.generatePrompt(request.preferences, request.mealType);
-    let fullResponse = '';
+    let fullResponse = "";
 
-    if (provider === 'coze') {
+    if (provider === "coze") {
       await this.cozeService.createStreamCompletion(
-        [{ role: 'user', content: prompt }],
+        [{ role: "user", content: prompt }],
         (chunk) => {
-          console.log('>>1', chunk);
+          console.log(">>1", chunk);
           const content = chunk.choices[0]?.delta?.content;
           if (content) {
             fullResponse += content;
             onChunk(content);
           }
         },
-        'recommendation-user',
+        "recommendation-user",
         {
           auto_save_history: false,
         }
       );
     } else {
-      const service = this.getAIService(provider);
-      await (service as OllamaService | DifyService).createStreamingCompletion(
+      const service = await this.getAIService(provider, request.userId);
+      await (service as OpenAIService).createStreamingCompletion(
         prompt,
         (chunk) => {
           fullResponse += chunk;
@@ -276,23 +311,23 @@ ${mealType ? `- 餐次类型: ${mealType}` : ''}
   async getStreamingSingleMealRecommendation(
     request: RecommendationRequest,
     onChunk: (chunk: string) => void,
-    provider: AIProvider = 'dify'
+    provider: AIProvider = "coze"
   ): Promise<AiRecipe> {
-    return this.getStreamingRecommendation(request, onChunk);
+    return this.getStreamingRecommendation(request, onChunk, provider);
   }
 
   async getStreamingDailyPlanRecommendation(
     request: RecommendationRequest,
     onChunk: (chunk: string) => void,
-    provider: AIProvider = 'dify'
+    provider: AIProvider = "coze"
   ): Promise<AiRecipe[]> {
     const meals = [];
-    const mealTypes = ['breakfast', 'lunch', 'dinner'];
+    const mealTypes = ["breakfast", "lunch", "dinner"];
 
     for (const mealType of mealTypes) {
       const mealRequest = {
         ...request,
-        mealType: mealType as 'breakfast' | 'lunch' | 'dinner',
+        mealType: mealType as "breakfast" | "lunch" | "dinner",
       };
       const recommendation = await this.getStreamingRecommendation(
         mealRequest,

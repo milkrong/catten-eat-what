@@ -15,7 +15,7 @@
         "useShorthandArrayType": "error",
         "noUnusedTemplateLiteral": "error",
         "useTemplate": "error",
-        "noNonNullAssertion": "warn"
+        "noNonNullAssertion": "off"
       }
     },
     "ignore": ["noNonNullAssertion"]

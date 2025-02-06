@@ -5,11 +5,11 @@ interface DifyServiceConfig {
 
 interface DifyResponse {
   event:
-    | 'message'
-    | 'message_end'
-    | 'tts_message'
-    | 'tts_message_end'
-    | 'agent_message';
+    | "message"
+    | "message_end"
+    | "tts_message"
+    | "tts_message_end"
+    | "agent_message";
   message_id?: string;
   conversation_id: string;
   answer?: string;
@@ -34,18 +34,18 @@ export class DifyService {
 
   async createCompletion(prompt: string): Promise<string> {
     try {
-      let fullResponse = '';
+      let fullResponse = "";
       await this.createStreamingCompletion(prompt, (chunk) => {
-        console.log('<<', chunk);
+        console.log("<<", chunk);
         fullResponse += chunk;
       });
-      console.log('>>fullResponse', fullResponse);
+      console.log(">>fullResponse", fullResponse);
       return fullResponse;
     } catch (error) {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error('Dify API error: Unknown error occurred');
+      throw new Error("Dify API error: Unknown error occurred");
     }
   }
 
@@ -55,76 +55,78 @@ export class DifyService {
   ): Promise<void> {
     try {
       const response = await fetch(`${this.apiEndpoint}/chat-messages`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           inputs: {},
-          conversation_id: '',
+          conversation_id: "",
           query: prompt,
-          response_mode: 'streaming',
-          user: 'recommendation-user',
+          response_mode: "streaming",
+          user: "recommendation-user",
         }),
       });
 
       if (!response.ok) {
         const errorData = (await response.json()) as DifyResponse;
-        console.log('>>errorData', errorData);
+        console.log(">>errorData", errorData);
         throw new Error(
           `Dify API error: ${errorData.error || response.statusText}`
         );
       }
 
       if (!response.body) {
-        throw new Error('Dify API error: No response body received');
+        throw new Error("Dify API error: No response body received");
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
-        const messages = buffer.split('\n\n');
+        const messages = buffer.split("\n\n");
 
         // Keep the last incomplete message in the buffer
-        buffer = messages.pop() || '';
+        buffer = messages.pop() || "";
         for (const message of messages) {
-          if (message.startsWith('data: ')) {
+          if (message.startsWith("data: ")) {
             try {
               const data = JSON.parse(message.slice(6)) as DifyResponse;
-              console.log('>>data', data, message);
-              if (data.event === 'agent_message' && data.answer) {
+              console.log(">>data", data, message);
+              if (data.event === "agent_message" && data.answer) {
                 onChunk(data.answer);
               }
             } catch (e) {
-              console.error('Error parsing SSE data:', e);
+              console.error("Error parsing SSE data:", e);
             }
           }
         }
       }
 
       // Handle any remaining data
-      if (buffer.startsWith('data: ')) {
+      if (buffer.startsWith("data: ")) {
         try {
           const data = JSON.parse(buffer.slice(6)) as DifyResponse;
-          if (data.event === 'message' && data.answer) {
+          if (data.event === "message" && data.answer) {
             onChunk(data.answer);
           }
         } catch (e) {
-          console.error('Error parsing SSE data:', e);
+          console.error("Error parsing SSE data:", e);
         }
       }
     } catch (error) {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error('Dify API error: Unknown error occurred');
+      throw new Error("Dify API error: Unknown error occurred");
     }
   }
 }

@@ -48,10 +48,15 @@
 - `GET /api/recommendations` - 获取推荐食谱
 - `GET /api/recommendations/personalized` - 获取个性化推荐 (需要认证)
 
-### 用户偏好
+### 用户相关
 
+- `GET /api/users/profile` - 获取用户个人资料 (需要认证)
+- `PUT /api/users/profile` - 更新用户个人资料 (需要认证)
 - `GET /api/users/preferences` - 获取用户偏好 (需要认证)
 - `PUT /api/users/preferences` - 更新用户偏好 (需要认证)
+- `GET /api/users/settings` - 获取用户设置 (需要认证)
+- `PUT /api/users/settings` - 更新用户设置 (需要认证)
+- `GET /api/users/info` - 获取用户完整信息（包含个人资料、偏好和设置）(需要认证)
 
 ### 收藏管理
 

@@ -102,7 +102,17 @@ export class OpenAIService {
     }
   }
 
-  private validateRecipe(recipe: Recipe): void {
+  private validateRecipe(recipe: {
+    ingredients: Array<{ name: string; amount: number; unit: string }>;
+    calories: number;
+    cookingTime: number;
+    nutritionFacts: {
+      protein: number;
+      fat: number;
+      carbs: number;
+      fiber: number;
+    };
+  }): void {
     // Validate ingredients
     if (!recipe.ingredients) {
       throw new Error("Ingredients are required");
@@ -146,17 +156,17 @@ export class OpenAIService {
     if (typeof recipe.calories !== "number") {
       throw new Error("Invalid calories: must be a number");
     }
-    if (typeof recipe.cooking_time !== "number") {
+    if (typeof recipe.cookingTime !== "number") {
       throw new Error("Invalid cooking_time: must be a number");
     }
 
     // Validate nutrition facts
-    const { nutrition_facts } = recipe;
+    const { nutritionFacts } = recipe;
     if (
-      typeof nutrition_facts?.protein !== "number" ||
-      typeof nutrition_facts?.fat !== "number" ||
-      typeof nutrition_facts?.carbs !== "number" ||
-      typeof nutrition_facts?.fiber !== "number"
+      typeof nutritionFacts?.protein !== "number" ||
+      typeof nutritionFacts?.fat !== "number" ||
+      typeof nutritionFacts?.carbs !== "number" ||
+      typeof nutritionFacts?.fiber !== "number"
     ) {
       throw new Error("Invalid nutrition_facts: all values must be numbers");
     }
@@ -197,7 +207,13 @@ export class OpenAIService {
         throw new Error("Invalid response format: JSON not found");
       }
 
-      const recipe = JSON.parse(match[1]) as Recipe;
+      const recipeJson = JSON.parse(match[1]);
+      const recipe = {
+        ingredients: recipeJson.ingredients,
+        calories: recipeJson.calories,
+        cookingTime: recipeJson.cooking_time,
+        nutritionFacts: recipeJson.nutrition_facts
+      };
       this.validateRecipe(recipe);
       return match[1];
     } catch (error) {

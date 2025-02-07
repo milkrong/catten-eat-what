@@ -4,7 +4,7 @@ import type {
   DietaryPreferences,
   RecommendationRequest,
 } from "../types/preferences";
-import type { Recipe } from "../types/recipe";
+import type { Recipe, Ingredient, NutritionFacts } from "../types/recipe";
 import { supabase } from "../config/supabase";
 
 type AiRecipe = Omit<
@@ -16,7 +16,13 @@ type AiRecipe = Omit<
   | "description"
   | "image_url"
   | "views"
->;
+  | "createdAt"
+  | "updatedAt"
+  | "createdBy"
+> & {
+  ingredients: Ingredient[];
+  nutritionFacts: NutritionFacts;
+};
 type AIProvider = "coze" | "deepseek" | "siliconflow" | "custom";
 
 interface UserSettings {
@@ -177,16 +183,17 @@ ${mealType ? `- 餐次类型: ${mealType}` : ""}
         name: rawRecipe.name,
         ingredients: rawRecipe.ingredients,
         calories: rawRecipe.calories,
-        cooking_time: rawRecipe.cooking_time,
-        nutrition_facts: {
+        cookingTime: rawRecipe.cooking_time,
+        nutritionFacts: {
+          calories: rawRecipe.calories,
           protein: rawRecipe.nutrition_facts.protein,
           fat: rawRecipe.nutrition_facts.fat,
           carbs: rawRecipe.nutrition_facts.carbs,
           fiber: rawRecipe.nutrition_facts.fiber,
         },
         steps: rawRecipe.steps,
-        cuisine_type: rawRecipe.cuisine_type,
-        diet_type: rawRecipe.diet_type,
+        cuisineType: rawRecipe.cuisine_type,
+        dietType: rawRecipe.diet_type,
         img: rawRecipe.img,
       };
 
@@ -195,8 +202,8 @@ ${mealType ? `- 餐次类型: ${mealType}` : ""}
         !recipe.name ||
         !recipe.ingredients ||
         !recipe.calories ||
-        !recipe.cooking_time ||
-        !recipe.nutrition_facts ||
+        !recipe.cookingTime ||
+        !recipe.nutritionFacts ||
         !recipe.steps
       ) {
         throw new Error("Missing required fields in recipe");
@@ -214,7 +221,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ""}
       }
 
       // 验证营养成分
-      const nutrition = recipe.nutrition_facts;
+      const nutrition = recipe.nutritionFacts;
       if (
         typeof nutrition.protein !== "number" ||
         typeof nutrition.fat !== "number" ||

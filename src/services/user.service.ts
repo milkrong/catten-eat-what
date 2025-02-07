@@ -1,6 +1,7 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from '../config/db';
 import { profiles, preferences, settings, favorites } from '../db/schema';
+import type { ProfileWithRelations } from '../db/schema';
 import type { NewPreference } from '../types/preference';
 import type { NewSetting } from '../types/setting';
 
@@ -10,32 +11,30 @@ export class UserService {
       where: eq(profiles.id, userId),
       with: {
         preferences: true,
-        settings: {
-          columns: {
-            apiKey: false,
-          },
-        },
+        settings: true,
         favorites: {
           with: {
             recipe: true,
           },
         },
       },
-    });
+    }) as ProfileWithRelations | null;
 
     if (!userProfile) return null;
 
+    const { preferences, settings, favorites, ...profile } = userProfile;
+
     return {
       profile: {
-        id: userProfile.id,
-        username: userProfile.username,
-        avatarUrl: userProfile.avatarUrl,
-        createdAt: userProfile.createdAt,
-        updatedAt: userProfile.updatedAt,
+        id: profile.id,
+        username: profile.username,
+        avatarUrl: profile.avatarUrl,
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
       },
-      preferences: userProfile.preferences,
-      settings: userProfile.settings,
-      favorites: userProfile.favorites,
+      preferences,
+      settings,
+      favorites,
     };
   }
 

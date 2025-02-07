@@ -1,12 +1,11 @@
 // src/services/meal-plan.service.ts
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, type SQL } from 'drizzle-orm';
 import { db } from '../config/db';
 import { mealPlans } from '../db/schema';
-import type { InferModel } from 'drizzle-orm';
+import type { MealPlan, MealPlanWithRelations } from '../db/schema';
 import { RecipeService } from './recipe.service';
 
-export type MealPlan = InferModel<typeof mealPlans>;
-export type NewMealPlan = InferModel<typeof mealPlans, 'insert'>;
+export type NewMealPlan = typeof mealPlans.$inferInsert;
 
 export class MealPlanService {
   private recipeService: RecipeService;
@@ -15,11 +14,22 @@ export class MealPlanService {
     this.recipeService = new RecipeService();
   }
 
-  async getMealPlans(userId: string) {
+  async getMealPlans(userId: string, startDate?: Date, endDate?: Date): Promise<MealPlanWithRelations[]> {
+    const baseCondition = eq(mealPlans.userId, userId);
+    
+    const whereClause = startDate && endDate
+      ? and(
+          baseCondition,
+          gte(mealPlans.date, startDate.toISOString().split('T')[0]),
+          lte(mealPlans.date, endDate.toISOString().split('T')[0])
+        )
+      : baseCondition;
+
     return await db.query.mealPlans.findMany({
-      where: eq(mealPlans.userId, userId),
+      where: whereClause,
       with: {
         recipe: true,
+        profile: true,
       },
       orderBy: desc(mealPlans.date),
     });
@@ -147,5 +157,14 @@ export class MealPlanService {
       console.error('Generate meal plans error:', error);
       throw new Error('生成膳食计划失败');
     }
+  }
+
+  async getMealPlanById(id: string) {
+    return await db.query.mealPlans.findFirst({
+      where: eq(mealPlans.id, id),
+      with: {
+        recipe: true,
+      },
+    });
   }
 }

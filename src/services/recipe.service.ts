@@ -1,8 +1,9 @@
 // src/services/recipe.service.ts
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Recipe } from '../types/recipe';
-import { RecipeFilters } from '../types/recipe';
-import type { Database, Json } from '../types/supabase';
+import { eq, lte, desc, and, not, inArray, sql } from 'drizzle-orm';
+import { db } from '../config/db';
+import { recipes } from '../db/schema';
+import type { Recipe } from '../types/recipe';
+import type { RecipeFilters } from '../types/recipe';
 
 interface RecommendationParams {
   dietTypes: string[];
@@ -12,85 +13,74 @@ interface RecommendationParams {
 }
 
 export class RecipeService {
-  constructor(private supabase: SupabaseClient<Database>) {}
-
   async getRecipes(filters: RecipeFilters = {}): Promise<Recipe[]> {
-    let query = this.supabase.from('recipes').select('*');
+    const conditions = [];
 
-    // 应用过滤条件
     if (filters.cuisineType) {
-      query = query.eq('cuisine_type', filters.cuisineType);
+      conditions.push(eq(recipes.cuisineType, filters.cuisineType));
     }
     if (filters.maxCookingTime) {
-      query = query.lte('cooking_time', filters.maxCookingTime);
+      conditions.push(lte(recipes.cookingTime, filters.maxCookingTime));
     }
     if (filters.dietType && filters.dietType.length > 0) {
-      query = query.contains('diet_type', filters.dietType);
+      // Note: This is a simplification. You might need to adjust based on your exact needs
+      conditions.push(eq(recipes.dietType, filters.dietType));
     }
 
-    // 应用默认限制
-    query = query.limit(50); // 默认限制
+    const result = await db.query.recipes.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined,
+      limit: 50,
+    });
 
-    const { data, error } = await query;
-
-    if (error) throw error;
-    return data as Recipe[];
+    return result as Recipe[];
   }
 
   async getPopularRecipes(limit: number = 50): Promise<Recipe[]> {
-    const { data, error } = await this.supabase
-      .from('recipes')
-      .select('*')
-      .order('views', { ascending: false })
-      .limit(limit);
+    const result = await db.query.recipes.findMany({
+      orderBy: desc(recipes.views),
+      limit,
+    });
 
-    if (error) throw error;
-    return data as Recipe[];
+    return result as Recipe[];
   }
 
   async getRecentRecipes(limit: number = 30): Promise<Recipe[]> {
-    const { data, error } = await this.supabase
-      .from('recipes')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    const result = await db.query.recipes.findMany({
+      orderBy: desc(recipes.createdAt),
+      limit,
+    });
 
-    if (error) throw error;
-    return data as Recipe[];
+    return result as Recipe[];
   }
 
   async getRecipesByCuisine(
     cuisineType: string,
     limit: number = 10
   ): Promise<Recipe[]> {
-    const { data, error } = await this.supabase
-      .from('recipes')
-      .select('*')
-      .eq('cuisine_type', cuisineType)
-      .order('views', { ascending: false })
-      .limit(limit);
+    const result = await db.query.recipes.findMany({
+      where: eq(recipes.cuisineType, cuisineType),
+      orderBy: desc(recipes.views),
+      limit,
+    });
 
-    if (error) throw error;
-    return data as Recipe[];
+    return result as Recipe[];
   }
 
   async getRecipeById(id: string): Promise<Recipe | null> {
-    const { data, error } = await this.supabase
-      .from('recipes')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const result = await db.query.recipes.findFirst({
+      where: eq(recipes.id, id),
+    });
 
-    if (error) throw error;
-    return data as Recipe;
+    return result as Recipe | null;
   }
 
   async incrementViews(id: string): Promise<void> {
-    const { error } = await this.supabase.rpc('increment_recipe_views', {
-      recipe_id: id,
-    });
-
-    if (error) throw error;
+    await db
+      .update(recipes)
+      .set({
+        views: sql`${recipes.views} + 1`,
+      })
+      .where(eq(recipes.id, id));
   }
 
   async createRecipe(
@@ -99,70 +89,53 @@ export class RecipeService {
       'id' | 'created_at' | 'updated_at' | 'image_url' | 'views'
     >
   ): Promise<Recipe> {
-    console.log('recipe', recipe);
-    const { data, error } = await this.supabase
-      .from('recipes')
-      .insert([
-        {
-          ...recipe,
-          nutrition_facts: recipe.nutrition_facts as Json,
-          ingredients: recipe.ingredients as Json,
-          steps: recipe.steps as Json,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ])
-      .select()
-      .single();
+    const [result] = await db
+      .insert(recipes)
+      .values({
+        ...recipe,
+        views: 0,
+      })
+      .returning();
 
-    if (error) throw error;
-    return data as Recipe;
+    return result as Recipe;
   }
 
   async updateRecipe(
     id: string,
     updates: Partial<Omit<Recipe, 'id' | 'created_at' | 'created_by'>>
   ): Promise<Recipe> {
-    const { data, error } = await this.supabase
-      .from('recipes')
-      .update({
+    const [result] = await db
+      .update(recipes)
+      .set({
         ...updates,
-        nutrition_facts: updates.nutrition_facts as Json,
-        ingredients: updates.ingredients as Json,
-        updated_at: new Date().toISOString(),
-        steps: updates.steps as Json,
+        updatedAt: new Date(),
       })
-      .eq('id', id)
-      .select()
-      .single();
+      .where(eq(recipes.id, id))
+      .returning();
 
-    if (error) throw error;
-    return data as Recipe;
+    return result as Recipe;
   }
 
   async deleteRecipe(id: string): Promise<void> {
-    const { error } = await this.supabase.from('recipes').delete().eq('id', id);
-
-    if (error) throw error;
+    await db.delete(recipes).where(eq(recipes.id, id));
   }
 
   async getRecommendedRecipes(params: RecommendationParams) {
-    let query = this.supabase.from('recipes').select('*');
+    const conditions = [];
 
     if (params.maxCookingTime) {
-      query = query.lte('cookingTime', params.maxCookingTime);
+      conditions.push(lte(recipes.cookingTime, params.maxCookingTime));
     }
 
     if (params.excludeIds?.length) {
-      query = query.not('id', 'in', params.excludeIds);
+      conditions.push(not(inArray(recipes.id, params.excludeIds)));
     }
 
-    const { data: recipes, error } = await query.limit(3);
+    const result = await db.query.recipes.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined,
+      limit: 3,
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return recipes;
+    return result;
   }
 }

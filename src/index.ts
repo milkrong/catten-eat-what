@@ -7,7 +7,7 @@ import { HTTPException } from 'hono/http-exception';
 import { authMiddleware } from './middlewares/auth';
 import { recipeRoutes } from './routes/recipe.routes';
 import { mealPlanRoutes } from './routes/meal-plan.routes';
-import { supabase } from './config/supabase';
+import {supabase} from './config/supabase';
 import { WarmupSchedulerService } from './services/warmup-scheduler.service';
 import { recommendationRoutes } from './routes/recommendation.routes';
 import { userRoutes } from './routes/user.routes';
@@ -21,7 +21,7 @@ const app = new Hono().basePath('/api');
 
 // 创建必要的服务实例
 const cacheService = new CacheService();
-const recipeService = new RecipeService(supabase);
+const recipeService = new RecipeService();
 
 // 创建预热调度器
 const warmupScheduler = new WarmupSchedulerService(

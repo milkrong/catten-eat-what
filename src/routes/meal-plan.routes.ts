@@ -3,17 +3,16 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { MealPlanService } from '../services/meal-plan.service';
-import { supabase } from '../config/supabase';
 import type { MealPlan } from '../types';
 
 // 创建MealPlan服务实例
-const mealPlanService = new MealPlanService(supabase);
+const mealPlanService = new MealPlanService();
 
 // 验证Schema
 const createMealPlanSchema = z.object({
   date: z.string().datetime(),
-  meal_type: z.enum(['breakfast', 'lunch', 'dinner', 'snack']),
-  recipe_id: z.string().uuid(),
+  mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']),
+  recipeId: z.string().uuid(),
 });
 
 const generateMealPlanSchema = z.object({
@@ -56,13 +55,11 @@ app.get('/', async (c) => {
 app.post('/', zValidator('json', createMealPlanSchema), async (c) => {
   try {
     const userId = c.get('userId');
-    console.log('userId', userId);
-    const mealPlanData = await c.req.json<MealPlan>();
-    console.log('mealPlanData', mealPlanData);
+    const mealPlanData = await c.req.json();
 
     const mealPlan = await mealPlanService.createMealPlan({
       ...mealPlanData,
-      user_id: userId,
+      userId,
     });
 
     return c.json(mealPlan, 201);
@@ -102,7 +99,7 @@ app.put('/:id', zValidator('json', createMealPlanSchema), async (c) => {
     if (!existingMealPlan) {
       return c.json({ error: '膳食计划不存在' }, 404);
     }
-    if (existingMealPlan.user_id !== userId) {
+    if (existingMealPlan.userId !== userId) {
       return c.json({ error: '没有权限修改此膳食计划' }, 403);
     }
 
@@ -127,7 +124,7 @@ app.delete('/:id', async (c) => {
     if (!existingMealPlan) {
       return c.json({ error: '膳食计划不存在' }, 404);
     }
-    if (existingMealPlan.user_id !== userId) {
+    if (existingMealPlan.userId !== userId) {
       return c.json({ error: '没有权限删除此膳食计划' }, 403);
     }
 

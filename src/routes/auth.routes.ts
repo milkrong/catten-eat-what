@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { supabase } from '../config/supabase';
+import {supabase} from '../config/supabase';
 import { authMiddleware } from '../middlewares/auth';
 
 const auth = new Hono();

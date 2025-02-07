@@ -24,7 +24,7 @@ export interface Step {
 export interface NutritionFacts {
   calories: number;
   protein: number;
-  carbohydrates: number;
+  carbs: number;
   fat: number;
   fiber: number;
 }

@@ -1,231 +1,159 @@
 import { Hono } from "hono";
-import { supabase } from "../config/supabase";
 import type { Variables } from "../types/hono";
+import { UserService } from "../services/user.service";
 
 const app = new Hono<{ Variables: Variables }>();
+const userService = new UserService();
 
 // 获取用户完整信息（包含个人资料、偏好设置和系统设置）
 app.get("/info", async (c) => {
-  console.log("get user info");
-  const userId = c.get("userId");
+  try {
+    const userId = c.get("userId");
+    const userInfo = await userService.getUserInfo(userId);
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(
-      `
-      *,
-      preferences:preferences!preferences_id_fkey(*),
-      settings:settings!user_id(
-        id,
-        user_id,
-        llm_service,
-        model_name,
-        is_paid,
-        api_endpoint,
-        created_at,
-        updated_at
-      ),
-      favorites:favorites!favorites_user_id_fkey(
-        id,
-        recipe_id,
-        created_at
-      )
-    `
-    )
-    .eq("id", userId)
-    .single();
+    if (!userInfo) {
+      return c.json({ error: "User not found" }, 404);
+    }
 
-  if (error) {
-    return c.json({ error: error.message }, 500);
+    return c.json(userInfo);
+  } catch (error) {
+    console.error('Error getting user info:', error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  return c.json({
-    profile: {
-      id: data.id,
-      username: data.username,
-      avatar_url: data.avatar_url,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-    },
-    preferences: data.preferences,
-    settings: data.settings,
-    favorites: data.favorites,
-  });
 });
 
 // 获取用户信息
 app.get("/profile", async (c) => {
-  const userId = c.get("userId");
+  try {
+    const userId = c.get("userId");
+    const profile = await userService.getProfile(userId);
 
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .single();
+    if (!profile) {
+      return c.json({ error: "Profile not found" }, 404);
+    }
 
-  if (error) {
-    return c.json({ error: error.message }, 500);
+    return c.json(profile);
+  } catch (error) {
+    console.error('Error getting profile:', error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  return c.json(profile);
 });
 
 // 更新用户资料
 app.put("/profile", async (c) => {
-  const userId = c.get("userId");
-  const updates = await c.req.json();
+  try {
+    const userId = c.get("userId");
+    const updates = await c.req.json();
+    const profile = await userService.updateProfile(userId, updates);
 
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .update(updates)
-    .eq("id", userId)
-    .select()
-    .single();
-
-  if (error) {
-    return c.json({ error: error.message }, 500);
+    return c.json(profile);
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  return c.json(profile);
 });
 
 // 获取用户的食谱收藏
 app.get("/favorites", async (c) => {
-  const userId = c.get("userId");
+  try {
+    const userId = c.get("userId");
+    const favorites = await userService.getFavorites(userId);
 
-  const { data: favorites, error } = await supabase
-    .from("favorites")
-    .select(
-      `
-      id,
-      recipe_id,
-      recipes (*)
-    `
-    )
-    .eq("user_id", userId);
-
-  if (error) {
-    return c.json({ error: error.message }, 500);
+    return c.json(favorites);
+  } catch (error) {
+    console.error('Error getting favorites:', error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  return c.json(favorites);
 });
 
 // 添加食谱到收藏
 app.post("/favorites/:recipeId", async (c) => {
-  const userId = c.get("userId");
-  const recipeId = c.req.param("recipeId");
+  try {
+    const userId = c.get("userId");
+    const recipeId = c.req.param("recipeId");
+    const favorite = await userService.addFavorite(userId, recipeId);
 
-  const { error } = await supabase
-    .from("favorites")
-    .insert([{ user_id: userId, recipe_id: recipeId }]);
-
-  if (error) {
-    return c.json({ error: error.message }, 500);
+    return c.json({ message: "Recipe added to favorites", favorite });
+  } catch (error) {
+    console.error('Error adding favorite:', error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  return c.json({ message: "Recipe added to favorites" });
 });
 
 // 从收藏中移除食谱
 app.delete("/favorites/:recipeId", async (c) => {
-  const userId = c.get("userId");
-  const recipeId = c.req.param("recipeId");
+  try {
+    const userId = c.get("userId");
+    const recipeId = c.req.param("recipeId");
+    await userService.removeFavorite(userId, recipeId);
 
-  const { error } = await supabase
-    .from("favorites")
-    .delete()
-    .eq("user_id", userId)
-    .eq("recipe_id", recipeId);
-
-  if (error) {
-    return c.json({ error: error.message }, 500);
+    return c.json({ message: "Recipe removed from favorites" });
+  } catch (error) {
+    console.error('Error removing favorite:', error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  return c.json({ message: "Recipe removed from favorites" });
 });
 
 // 获取用户偏好设置
 app.get("/preferences", async (c) => {
-  const userId = c.get("userId");
+  try {
+    const userId = c.get("userId");
+    const preferences = await userService.getPreferences(userId);
 
-  const { data: preferences, error } = await supabase
-    .from("preferences")
-    .select("*")
-    .eq("id", userId)
-    .single();
+    if (!preferences) {
+      return c.json({ error: "Preferences not found" }, 404);
+    }
 
-  if (error) {
-    return c.json({ error: error.message }, 500);
+    return c.json(preferences);
+  } catch (error) {
+    console.error('Error getting preferences:', error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  return c.json(preferences);
 });
 
 // 更新用户偏好设置
 app.put("/preferences", async (c) => {
-  const userId = c.get("userId");
-  const updates = await c.req.json();
-  console.log("updates", updates);
-  const { data: preferences, error } = await supabase
-    .from("preferences")
-    .upsert({
-      id: userId,
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
+  try {
+    const userId = c.get("userId");
+    const updates = await c.req.json();
+    const preferences = await userService.upsertPreferences(userId, updates);
 
-  if (error) {
-    console.error(error);
-    return c.json({ error: error.message }, 500);
+    return c.json(preferences);
+  } catch (error) {
+    console.error('Error updating preferences:', error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  return c.json(preferences);
 });
 
 // 获取用户设置
 app.get("/settings", async (c) => {
-  const userId = c.get("userId");
+  try {
+    const userId = c.get("userId");
+    const settings = await userService.getSettings(userId);
 
-  const { data: settings, error } = await supabase
-    .from("settings")
-    .select(
-      "id, user_id, llm_service, model_name, is_paid, api_endpoint, created_at, updated_at"
-    )
-    .eq("user_id", userId)
-    .single();
+    if (!settings) {
+      return c.json({ error: "Settings not found" }, 404);
+    }
 
-  if (error) {
-    return c.json({ error: error.message }, 500);
+    return c.json(settings);
+  } catch (error) {
+    console.error('Error getting settings:', error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  return c.json(settings);
 });
 
 // 更新用户设置
 app.put("/settings", async (c) => {
-  const userId = c.get("userId");
-  const updates = await c.req.json();
+  try {
+    const userId = c.get("userId");
+    const updates = await c.req.json();
+    const settings = await userService.upsertSettings(userId, updates);
 
-  const { data: settings, error } = await supabase
-    .from("settings")
-    .upsert({
-      user_id: userId,
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .select(
-      "id, user_id, llm_service, model_name, is_paid, api_endpoint, created_at, updated_at"
-    )
-    .single();
-
-  if (error) {
-    return c.json({ error: error.message }, 500);
+    return c.json(settings);
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  return c.json(settings);
 });
 
 export const userRoutes = app;

@@ -1,20 +1,8 @@
-export interface Recipe {
-  id: string;
-  name: string;
-  description: string | null;
-  ingredients: Ingredient[] | null;
-  steps: Step[] | null;
-  calories: number | null;
-  cooking_time: number | null;
-  nutrition_facts: NutritionFacts | null;
-  cuisine_type: string[] | null;
-  diet_type: string[] | null;
-  created_by: string | null;
-  views: number | null;
-  created_at: string | null;
-  updated_at: string | null;
-  img?: string | null;
-}
+import { InferModel } from 'drizzle-orm';
+import { recipes } from '../db/schema';
+
+export type Recipe = InferModel<typeof recipes>;
+export type NewRecipe = InferModel<typeof recipes, 'insert'>;
 
 export interface RecipeFilters {
   cuisineType?: string;
@@ -34,8 +22,9 @@ export interface Step {
 }
 
 export interface NutritionFacts {
+  calories: number;
   protein: number;
-  carbs: number;
+  carbohydrates: number;
   fat: number;
   fiber: number;
 }

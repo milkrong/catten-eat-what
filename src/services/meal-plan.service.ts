@@ -1,119 +1,81 @@
 // src/services/meal-plan.service.ts
-import { SupabaseClient } from '@supabase/supabase-js';
-import { MealPlan } from '../types';
-import { HTTPException } from 'hono/http-exception';
-import type { Database } from '../types/supabase';
+import { eq, and, desc } from 'drizzle-orm';
+import { db } from '../config/db';
+import { mealPlans } from '../db/schema';
+import type { InferModel } from 'drizzle-orm';
 import { RecipeService } from './recipe.service';
+
+export type MealPlan = InferModel<typeof mealPlans>;
+export type NewMealPlan = InferModel<typeof mealPlans, 'insert'>;
 
 export class MealPlanService {
   private recipeService: RecipeService;
 
-  constructor(private supabase: SupabaseClient<Database>) {
-    this.recipeService = new RecipeService(supabase);
+  constructor() {
+    this.recipeService = new RecipeService();
   }
 
-  async getMealPlans(userId: string, startDate: Date, endDate: Date) {
-    try {
-      const { data, error } = await this.supabase
-        .from('meal_plans')
-        .select(
-          `
-          *,
-          recipe:recipe_id (
-            *
-          )
-        `
-        )
-        .eq('user_id', userId)
-        .gte('date', startDate.toISOString())
-        .lte('date', endDate.toISOString())
-        .order('date', { ascending: true });
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Get meal plans errors:', error);
-      throw new HTTPException(500, { message: '获取膳食计划失败' });
-    }
+  async getMealPlans(userId: string) {
+    return await db.query.mealPlans.findMany({
+      where: eq(mealPlans.userId, userId),
+      with: {
+        recipe: true,
+      },
+      orderBy: desc(mealPlans.date),
+    });
   }
 
-  async getMealPlanById(id: string) {
-    try {
-      const { data, error } = await this.supabase
-        .from('meal_plans')
-        .select(
-          `
-          *,
-          recipe:recipe_id (
-            *
-          )
-        `
-        )
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Get meal plan error:', error);
-      throw new HTTPException(500, { message: '获取膳食计划详情失败' });
-    }
+  async getMealPlansByDate(userId: string, date: Date) {
+    return await db.query.mealPlans.findMany({
+      where: and(
+        eq(mealPlans.userId, userId),
+        eq(mealPlans.date, date.toISOString().split('T')[0])
+      ),
+      with: {
+        recipe: true,
+      },
+    });
   }
 
-  async createMealPlan(
-    mealPlan: Omit<MealPlan, 'id' | 'created_at' | 'updated_at'>
-  ) {
-    try {
-      const { data, error } = await this.supabase
-        .from('meal_plans')
-        .insert(mealPlan)
-        .select(
-          `
-          *,
-          recipe:recipe_id (
-            *
-          )
-        `
-        )
-        .single();
+  async createMealPlan(mealPlan: NewMealPlan) {
+    const [created] = await db
+      .insert(mealPlans)
+      .values({
+        ...mealPlan,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Create meal plan error:', error);
-      throw new HTTPException(500, { message: '创建膳食物计划失败' });
-    }
+    return created;
   }
 
-  async updateMealPlan(id: string, mealPlan: Partial<MealPlan>) {
-    try {
-      const { data, error } = await this.supabase
-        .from('meal_plans')
-        .update(mealPlan)
-        .eq('id', id)
-        .select('*')
-        .single();
+  async updateMealPlan(id: string, updates: Partial<NewMealPlan>) {
+    const [updated] = await db
+      .update(mealPlans)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(mealPlans.id, id))
+      .returning();
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Update meal plan error:', error);
-      throw new HTTPException(500, { message: '更新膳食计划失败' });
-    }
+    return updated;
   }
 
   async deleteMealPlan(id: string) {
-    try {
-      const { error } = await this.supabase
-        .from('meal_plans')
-        .delete()
-        .eq('id', id);
+    await db
+      .delete(mealPlans)
+      .where(eq(mealPlans.id, id));
+  }
 
-      if (error) throw error;
-    } catch (error) {
-      console.error('Delete meal plan error:', error);
-      throw new HTTPException(500, { message: '删除膳食计划失败' });
-    }
+  async deleteMealPlansByDate(userId: string, date: Date) {
+    await db
+      .delete(mealPlans)
+      .where(and(
+        eq(mealPlans.userId, userId),
+        eq(mealPlans.date, date.toISOString().split('T')[0])
+      ));
   }
 
   async generateMealPlans(
@@ -166,16 +128,16 @@ export class MealPlanService {
             throw new Error('Invalid user_id or recipe_id');
           }
           const mealPlan = await this.createMealPlan({
-            user_id: userId,
+            userId,
             date: currentDate.toISOString(),
-            meal_type: mealType,
-            recipe_id: recipe.id,
+            mealType: mealType,
+            recipeId: recipe.id,
           });
 
           mealPlans.push({
             ...mealPlan,
-            user_id: userId,
-            recipe_id: recipe.id,
+            userId,
+            recipeId: recipe.id,
           });
         }
       }
@@ -183,7 +145,7 @@ export class MealPlanService {
       return mealPlans;
     } catch (error) {
       console.error('Generate meal plans error:', error);
-      throw new HTTPException(500, { message: '生成膳食计划失败' });
+      throw new Error('生成膳食计划失败');
     }
   }
 }

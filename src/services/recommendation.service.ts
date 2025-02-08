@@ -23,9 +23,9 @@ type AiRecipe = Omit<
   ingredients: Ingredient[];
   nutritionFacts: NutritionFacts;
 };
-type AIProvider = "coze" | "deepseek" | "siliconflow" | "custom";
+type AIProvider = "ark" | "coze" | "deepseek" | "siliconflow" | "custom";
 
-interface UserSettings {
+export interface UserSettings {
   llm_service: AIProvider;
   model_name?: string;
   is_paid?: boolean;
@@ -37,6 +37,7 @@ export class RecommendationService {
   private cozeService: CozeService;
   private deepseekService: OpenAIService;
   private siliconflowService: OpenAIService;
+  private arkService: OpenAIService;
   private customService: OpenAIService | null = null;
   private currentUserId: string | null = null;
 
@@ -55,6 +56,11 @@ export class RecommendationService {
       apiKey: process.env.SILICONFLOW_API_KEY!,
       apiEndpoint: process.env.SILICONFLOW_API_ENDPOINT!,
       model: process.env.SILICONFLOW_MODEL!,
+    });
+    this.arkService = new OpenAIService({
+      apiKey: process.env.ARK_API_KEY!,
+      apiEndpoint: process.env.ARK_API_ENDPOINT!,
+      model: process.env.ARK_MODEL!,
     });
   }
 
@@ -104,6 +110,8 @@ export class RecommendationService {
         return this.deepseekService;
       case "siliconflow":
         return this.siliconflowService;
+      case "ark":
+        return this.arkService;
       default:
         return this.cozeService;
     }
@@ -130,11 +138,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ""}
     const prompt = this.generatePrompt(request.preferences, request.mealType);
     const provider = request.provider || "coze";
 
-    if (
-      provider === "deepseek" ||
-      provider === "siliconflow" ||
-      provider === "custom"
-    ) {
+    if (provider !== "coze") {
       const service = await this.getAIService(provider, request.userId);
       const response = await (service as OpenAIService).createCompletion(
         prompt

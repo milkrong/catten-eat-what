@@ -1,4 +1,4 @@
-export type LLMService = "coze" | "deepseek" | "siliconflow" | "custom";
+export type LLMService = "coze" | "deepseek" | "siliconflow" | "ark" | "custom";
 
 export interface DietaryPreferences {
   id: string;

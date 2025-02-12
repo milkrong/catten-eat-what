@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Variables } from "../types/hono";
 import { UserService } from "../services/user.service";
+import { supabase } from "../config/supabase";
 
 const app = new Hono<{ Variables: Variables }>();
 const userService = new UserService();
@@ -153,6 +154,60 @@ app.put("/settings", async (c) => {
   } catch (error) {
     console.error('Error updating settings:', error);
     return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// 上传头像
+app.post("/avatar", async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const avatar = formData.get('avatar');
+    
+    if (!avatar || !(avatar instanceof File)) {
+      return c.json({ error: '请上传头像文件' }, 400);
+    }
+
+    // 验证文件类型
+    if (!avatar.type.startsWith('image/')) {
+      return c.json({ error: '请上传图片文件' }, 400);
+    }
+
+    const userId = c.get('userId');
+    const fileExt = avatar.type.split('/')[1];
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+
+    // 将文件转换为 ArrayBuffer
+    const arrayBuffer = await avatar.arrayBuffer();
+
+    // 上传到 Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('avatars')
+      .upload(fileName, arrayBuffer, {
+        contentType: avatar.type,
+        upsert: true
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    // 获取公开访问URL
+    const { data: { publicUrl } } = supabase
+      .storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    // 更新用户资料
+    const profile = await userService.updateProfile(userId, { avatarUrl: publicUrl });
+
+    return c.json({
+      message: '头像上传成功',
+      profile
+    });
+  } catch (error: any) {
+    console.error('Avatar upload error:', error);
+    return c.json({ error: error.message }, 500);
   }
 });
 

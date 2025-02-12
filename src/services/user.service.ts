@@ -20,7 +20,9 @@ export class UserService {
       },
     }) as ProfileWithRelations | null;
 
-    if (!userProfile) return null;
+    if (!userProfile) {
+      return null;
+    }
 
     const { preferences, settings, favorites, ...profile } = userProfile;
 

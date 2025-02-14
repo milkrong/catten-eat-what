@@ -55,7 +55,7 @@ export class UserService {
       })
       .where(eq(profiles.id, userId))
       .returning();
-
+    console.log('updated', updated);
     return updated;
   }
 
@@ -142,5 +142,20 @@ export class UserService {
       .returning();
 
     return updated;
+  }
+
+  async createProfile(userId: string, data: Partial<typeof profiles.$inferInsert>) {
+    const [profile] = await db
+      .insert(profiles)
+      .values({
+        id: userId,
+        username: data.username,
+        avatarUrl: data.avatarUrl,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    return profile;
   }
 } 

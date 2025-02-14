@@ -4,30 +4,6 @@ import { authMiddleware } from '../middlewares/auth';
 
 const auth = new Hono();
 
-// 检查邮箱是否已注册
-auth.post('/check-email', async (c) => {
-  try {
-    const { email } = await c.req.json();
-    
-    const { data, error } = await supabase
-      .from('users')
-      .select('email')
-      .eq('email', email)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      throw error;
-    }
-
-    return c.json({
-      exists: !!data,
-      message: data ? '该邮箱已被注册' : '该邮箱可以使用',
-    });
-  } catch (error: any) {
-    return c.json({ error: error.message }, 400);
-  }
-});
-
 // 用户注册
 auth.post('/register', async (c) => {
   try {
@@ -35,7 +11,7 @@ auth.post('/register', async (c) => {
 
     // 使用 Supabase 创建用户
     const {
-      data: { user },
+      data,
       error: signUpError,
     } = await supabase.auth.signUp({
       email,
@@ -53,7 +29,7 @@ auth.post('/register', async (c) => {
 
     return c.json({
       message: '注册成功，请检查邮箱完成验证',
-      user,
+      data,
     });
   } catch (error: any) {
     console.error(error);

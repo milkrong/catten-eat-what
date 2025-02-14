@@ -40,12 +40,29 @@ app.get("/profile", async (c) => {
   }
 });
 
+// 创建用户资料
+app.post("/profile", async (c) => {
+  try {
+    const userId = c.get("userId");
+    const data = await c.req.json();
+    const profile = await userService.createProfile(userId, data);
+
+    return c.json(profile, 201);
+  } catch (error) {
+    console.error('Error creating profile:', error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // 更新用户资料
 app.put("/profile", async (c) => {
   try {
     const userId = c.get("userId");
     const updates = await c.req.json();
+    console.log('update1s', updates, userId);
     const profile = await userService.updateProfile(userId, updates);
+
+    console.log('profile', profile);
 
     return c.json(profile);
   } catch (error) {

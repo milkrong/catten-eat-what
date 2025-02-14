@@ -26,6 +26,9 @@ export class RecipeService {
       // Note: This is a simplification. You might need to adjust based on your exact needs
       conditions.push(eq(recipes.dietType, filters.dietType));
     }
+    if (filters.createdBy) {
+      conditions.push(eq(recipes.createdBy, filters.createdBy));
+    }
 
     const result = await db.query.recipes.findMany({
       where: conditions.length > 0 ? and(...conditions) : undefined,
@@ -86,7 +89,7 @@ export class RecipeService {
   async createRecipe(
     recipe: Omit<
       Recipe,
-      'id' | 'created_at' | 'updated_at' | 'image_url' | 'views'
+      'id' | 'createdAt' | 'updatedAt' | 'views'
     >
   ): Promise<Recipe> {
     const [result] = await db

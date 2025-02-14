@@ -8,6 +8,7 @@ export interface RecipeFilters {
   cuisineType?: string;
   maxCookingTime?: number;
   dietType?: string[];
+  createdBy?: string;
 }
 
 export interface Ingredient {

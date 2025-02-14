@@ -2,9 +2,11 @@ import { Hono } from "hono";
 import type { Variables } from "../types/hono";
 import { UserService } from "../services/user.service";
 import { supabase } from "../config/supabase";
+import { ImageService } from "../services/image.service";
 
 const app = new Hono<{ Variables: Variables }>();
 const userService = new UserService();
+const imageService = new ImageService();
 
 // 获取用户完整信息（包含个人资料、偏好设置和系统设置）
 app.get("/info", async (c) => {
@@ -190,18 +192,24 @@ app.post("/avatar", async (c) => {
     }
 
     const userId = c.get('userId');
-    const fileExt = avatar.type.split('/')[1];
-    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const fileName = `${userId}-${Date.now()}.webp`; // 使用 WebP 扩展名
 
     // 将文件转换为 ArrayBuffer
     const arrayBuffer = await avatar.arrayBuffer();
 
+    // 处理图片（压缩和转换为 WebP）
+    const processedImageBuffer = await imageService.processUploadedImage(arrayBuffer, {
+      width: 400,
+      height: 400,
+      quality: 80
+    });
+
     // 上传到 Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase
       .storage
-      .from('avatars')
-      .upload(fileName, arrayBuffer, {
-        contentType: avatar.type,
+      .from('eat-what')
+      .upload(fileName, processedImageBuffer, {
+        contentType: 'image/webp',
         upsert: true
       });
 
@@ -212,7 +220,7 @@ app.post("/avatar", async (c) => {
     // 获取公开访问URL
     const { data: { publicUrl } } = supabase
       .storage
-      .from('avatars')
+      .from('eat-what')
       .getPublicUrl(fileName);
 
     // 更新用户资料

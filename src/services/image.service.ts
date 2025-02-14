@@ -48,4 +48,45 @@ export class ImageService {
       throw error;
     }
   }
+
+  /**
+   * 处理上传的图片
+   * @param buffer 图片buffer
+   * @param options 处理选项
+   * @returns 处理后的图片buffer
+   */
+  async processUploadedImage(
+    buffer: ArrayBuffer,
+    options: {
+      width?: number;
+      height?: number;
+      quality?: number;
+    } = {}
+  ): Promise<Buffer> {
+    const sharp = require('sharp');
+    const {
+      width = 400,  // 默认宽度
+      height = 400, // 默认高度
+      quality = 80  // 默认质量
+    } = options;
+
+    try {
+      // 将 ArrayBuffer 转换为 Buffer
+      const inputBuffer = Buffer.from(buffer);
+
+      // 处理图片
+      const processedImageBuffer = await sharp(inputBuffer)
+        .resize(width, height, {
+          fit: 'cover',     // 保持比例裁剪
+          position: 'center'
+        })
+        .webp({ quality }) // 转换为 WebP 格式
+        .toBuffer();
+
+      return processedImageBuffer;
+    } catch (error) {
+      console.error('Error processing image:', error);
+      throw new Error('Failed to process image');
+    }
+  }
 }

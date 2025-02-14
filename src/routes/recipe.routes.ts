@@ -3,11 +3,10 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { RecipeService } from '../services/recipe.service';
-import { supabase } from '../config/supabase';
 import type { Recipe, RecipeFilters } from '../types';
 
 // 创建Recipe服务实例
-const recipeService = new RecipeService(supabase);
+const recipeService = new RecipeService();
 
 // 验证Schema
 const createRecipeSchema = z.object({
@@ -44,13 +43,15 @@ const app = new Hono();
 // 获取食谱列表
 app.get('/', async (c) => {
   try {
-    console.log('get recipes', c.req.query);
+    const userId = c.get('userId');
+    console.log('get recipes for user:', userId);
     const filters: RecipeFilters = {
       cuisineType: c.req.query('cuisineType'),
       maxCookingTime: c.req.query('maxCookingTime')
         ? parseInt(c.req.query('maxCookingTime') ?? '')
         : undefined,
       dietType: c.req.query('dietType')?.split(','),
+      createdBy: userId,
     };
 
     const recipes = await recipeService.getRecipes(filters);
@@ -91,11 +92,11 @@ app.post('/', zValidator('json', createRecipeSchema), async (c) => {
       ingredients: recipeData.ingredients,
       steps: recipeData.steps,
       calories: recipeData.calories,
-      cooking_time: recipeData.cooking_time,
-      nutrition_facts: recipeData.nutrition_facts,
-      cuisine_type: recipeData.cuisine_type,
-      diet_type: recipeData.diet_type,
-      created_by: userId, // 确保这里的 userId 是 UUID 格式
+      cookingTime: recipeData.cookingTime,
+      nutritionFacts: recipeData.nutritionFacts,
+      cuisineType: recipeData.cuisineType,
+      dietType: recipeData.dietType,
+      createdBy: userId, // 确保这里的 userId 是 UUID 格式
       img: recipeData.img,
     });
 
@@ -118,7 +119,7 @@ app.put('/:id', zValidator('json', createRecipeSchema), async (c) => {
     if (!existingRecipe) {
       return c.json({ error: '食谱不存在' }, 404);
     }
-    if (existingRecipe.created_by !== userId) {
+    if (existingRecipe.createdBy !== userId) {
       return c.json({ error: '没有权限修改此食谱' }, 403);
     }
 
@@ -140,7 +141,7 @@ app.delete('/:id', async (c) => {
     if (!existingRecipe) {
       return c.json({ error: '食谱不存在' }, 404);
     }
-    if (existingRecipe.created_by !== userId) {
+    if (existingRecipe.createdBy !== userId) {
       return c.json({ error: '没有权限删除此食谱' }, 403);
     }
 

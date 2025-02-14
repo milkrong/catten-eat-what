@@ -1,9 +1,12 @@
 import { Hono } from "hono";
 import type { Variables } from "../types/hono";
 import { UserService } from "../services/user.service";
+import { supabase } from "../config/supabase";
+import { ImageService } from "../services/image.service";
 
 const app = new Hono<{ Variables: Variables }>();
 const userService = new UserService();
+const imageService = new ImageService();
 
 // 获取用户完整信息（包含个人资料、偏好设置和系统设置）
 app.get("/info", async (c) => {
@@ -39,12 +42,29 @@ app.get("/profile", async (c) => {
   }
 });
 
+// 创建用户资料
+app.post("/profile", async (c) => {
+  try {
+    const userId = c.get("userId");
+    const data = await c.req.json();
+    const profile = await userService.createProfile(userId, data);
+
+    return c.json(profile, 201);
+  } catch (error) {
+    console.error('Error creating profile:', error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // 更新用户资料
 app.put("/profile", async (c) => {
   try {
     const userId = c.get("userId");
     const updates = await c.req.json();
+    console.log('update1s', updates, userId);
     const profile = await userService.updateProfile(userId, updates);
+
+    console.log('profile', profile);
 
     return c.json(profile);
   } catch (error) {
@@ -153,6 +173,66 @@ app.put("/settings", async (c) => {
   } catch (error) {
     console.error('Error updating settings:', error);
     return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// 上传头像
+app.post("/avatar", async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const avatar = formData.get('avatar');
+    
+    if (!avatar || !(avatar instanceof File)) {
+      return c.json({ error: '请上传头像文件' }, 400);
+    }
+
+    // 验证文件类型
+    if (!avatar.type.startsWith('image/')) {
+      return c.json({ error: '请上传图片文件' }, 400);
+    }
+
+    const userId = c.get('userId');
+    const fileName = `${userId}-${Date.now()}.webp`; // 使用 WebP 扩展名
+
+    // 将文件转换为 ArrayBuffer
+    const arrayBuffer = await avatar.arrayBuffer();
+
+    // 处理图片（压缩和转换为 WebP）
+    const processedImageBuffer = await imageService.processUploadedImage(arrayBuffer, {
+      width: 400,
+      height: 400,
+      quality: 80
+    });
+
+    // 上传到 Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('eat-what')
+      .upload(fileName, processedImageBuffer, {
+        contentType: 'image/webp',
+        upsert: true
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    // 获取公开访问URL
+    const { data: { publicUrl } } = supabase
+      .storage
+      .from('eat-what')
+      .getPublicUrl(fileName);
+
+    // 更新用户资料
+    const profile = await userService.updateProfile(userId, { avatarUrl: publicUrl });
+
+    return c.json({
+      message: '头像上传成功',
+      profile
+    });
+  } catch (error: any) {
+    console.error('Avatar upload error:', error);
+    return c.json({ error: error.message }, 500);
   }
 });
 

@@ -11,7 +11,7 @@ auth.post('/register', async (c) => {
 
     // 使用 Supabase 创建用户
     const {
-      data: { user },
+      data,
       error: signUpError,
     } = await supabase.auth.signUp({
       email,
@@ -23,11 +23,13 @@ auth.post('/register', async (c) => {
       },
     });
 
-    if (signUpError) throw signUpError;
+    if (signUpError) {
+      throw signUpError;
+    }
 
     return c.json({
       message: '注册成功，请检查邮箱完成验证',
-      user,
+      data,
     });
   } catch (error: any) {
     console.error(error);
@@ -49,7 +51,9 @@ auth.post('/login', async (c) => {
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
 
     return c.json({
       message: '登录成功',
@@ -64,18 +68,14 @@ auth.post('/login', async (c) => {
 auth.post('/logout', authMiddleware, async (c) => {
   try {
     const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
 
     return c.json({ message: '退出登录成功' });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
-});
-
-// 获取当前用户信息
-auth.get('/me', authMiddleware, async (c) => {
-  const user = c.get('user');
-  return c.json(user);
 });
 
 // 刷新 token
@@ -86,8 +86,12 @@ auth.post('/refresh', async (c) => {
       error,
     } = await supabase.auth.refreshSession();
 
-    if (error) throw error;
-    if (!session) throw new Error('No session found');
+    if (error) {
+      throw error;
+    }
+    if (!session) {
+      throw new Error('No session found');
+    }
 
     return c.json({
       message: 'Token 刷新成功',

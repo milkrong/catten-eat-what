@@ -176,7 +176,8 @@ ${mealType ? `- 餐次类型: ${mealType}` : ""}
       // 移除可能的 "```json" 标记
       const cleanContent = content
         .replace(/^```json\n/, "")
-        .replace(/\n```$/, "");
+        .replace(/\n```$/, "")
+        .replace("```", "");
 
       // 解析 JSON
       console.log(">>3", cleanContent);

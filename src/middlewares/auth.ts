@@ -62,31 +62,36 @@ export async function checkPaymentMiddleware(
   c: Context<{ Variables: Variables }>,
   next: Next
 ) {
-  const userId = c.get("userId");
+  try {
+    const userId = c.get("userId");
 
-  // 获取用户设置
-  const { data: settings, error } = await supabase
-    .from("settings")
-    .select("is_paid, llm_service")
-    .eq("user_id", userId)
-    .single();
+    // 获取用户设置
+    const { data: settings, error } = await supabase
+      .from("settings")
+      .select("is_paid, llm_service")
+      .eq("user_id", userId)
+      .single();
 
-  if (error) {
-    return c.json({ error: "Failed to fetch user settings" }, 500);
+    if (error) {
+      return c.json({ error: "Failed to fetch user settings" }, 500);
+    }
+
+    // 如果用户使用自定义服务或已付费，允许访问
+    if (settings.llm_service === "custom" || settings.is_paid) {
+      await next();
+      return;
+    }
+
+    return c.json(
+      {
+        error: "Payment required",
+        message:
+          "Please upgrade to a paid plan or use a custom service to access this feature",
+      },
+      402
+    );
+  } catch (error) {
+    console.error("Error in checkPaymentMiddleware:", error);
+    return c.json({ error: "Internal server error" }, 500);
   }
-
-  // 如果用户使用自定义服务或已付费，允许访问
-  if (settings.llm_service === "custom" || settings.is_paid) {
-    await next();
-    return;
-  }
-
-  return c.json(
-    {
-      error: "Payment required",
-      message:
-        "Please upgrade to a paid plan or use a custom service to access this feature",
-    },
-    402
-  );
 }

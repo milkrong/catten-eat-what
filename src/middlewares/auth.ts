@@ -3,6 +3,7 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { supabase } from "../config/supabase";
 import type { Variables } from "../types/hono";
+import { UserService } from "../services/user.service";
 
 // 认证中间件
 export const authMiddleware = async (
@@ -67,24 +68,29 @@ export async function checkPaymentMiddleware(
     const userId = c.get("userId");
     console.log("userId", userId);
 
-    // 获取用户设置
-    const { data: settings, error } = await supabase
-      .from("settings")
-      .select("is_paid, llm_service")
-      .eq("user_id", userId)
-      .single();
-    console.log("settings", settings, error);
+    const userService = new UserService();
+    const settings = await userService.getSettings(userId);
+    console.log("settings", settings);
 
-    if (error) {
-      console.error("Error fetching user settings:", error);
-      return c.json({ error: "Failed to fetch user settings" }, 500);
+    // 如果没有设置，默认为未付费状态
+    if (!settings) {
+      console.log("settings not found");
+      return c.json(
+        {
+          error: "Settings required",
+          message: "Please configure your settings first",
+        },
+        400
+      );
     }
 
     // 如果用户使用自定义服务或已付费，允许访问
-    if (settings.llm_service === "custom" || settings.is_paid) {
+    if (settings.llmService === "custom" || settings.isPaid) {
       await next();
       return;
     }
+
+    console.log("payment required");
 
     return c.json(
       {

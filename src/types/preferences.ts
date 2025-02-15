@@ -2,15 +2,15 @@ export type LLMService = "coze" | "deepseek" | "siliconflow" | "ark" | "custom";
 
 export interface DietaryPreferences {
   id: string;
-  diet_type?: string[];
-  cuisine_type?: string[];
+  dietType?: string[];
+  cuisineType?: string[];
   allergies?: string[];
   restrictions?: string[];
-  calories_min?: number;
-  calories_max?: number;
-  max_cooking_time?: number;
-  created_at: string | null;
-  updated_at: string | null;
+  caloriesMin?: number;
+  caloriesMax?: number;
+  maxCookingTime?: number;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 export interface RecommendationRequest {

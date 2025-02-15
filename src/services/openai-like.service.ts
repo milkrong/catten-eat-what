@@ -209,8 +209,8 @@ export class OpenAIService {
       const recipe = {
         ingredients: recipeJson.ingredients,
         calories: recipeJson.calories,
-        cookingTime: recipeJson.cooking_time,
-        nutritionFacts: recipeJson.nutrition_facts
+        cookingTime: recipeJson.cookingTime,
+        nutritionFacts: recipeJson.nutritionFacts
       };
       this.validateRecipe(recipe);
       return match[1];

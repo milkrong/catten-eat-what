@@ -122,12 +122,12 @@ export class RecommendationService {
     mealType?: string
   ): string {
     return `基于以下用户偏好生成推荐食谱:
-- 饮食类型: ${preferences.diet_type?.join(", ") || ""}
-- 偏好菜系: ${preferences.cuisine_type?.join(", ") || ""}
+- 饮食类型: ${preferences.dietType?.join(", ") || ""}
+- 偏好菜系: ${preferences.cuisineType?.join(", ") || ""}
 - 过敏源: ${preferences.allergies?.join(", ") || ""}
 - 饮食限制: ${preferences.restrictions?.join(", ") || ""}
-- 卡路里范围: ${preferences.calories_min}-${preferences.calories_max}卡路里
-- 最长烹饪时间: ${preferences.max_cooking_time}分钟
+- 卡路里范围: ${preferences.caloriesMin}-${preferences.caloriesMax}卡路里
+- 最长烹饪时间: ${preferences.maxCookingTime}分钟
 ${mealType ? `- 餐次类型: ${mealType}` : ""}
 `;
   }
@@ -188,17 +188,17 @@ ${mealType ? `- 餐次类型: ${mealType}` : ""}
         name: rawRecipe.name,
         ingredients: rawRecipe.ingredients,
         calories: rawRecipe.calories,
-        cookingTime: rawRecipe.cooking_time,
+        cookingTime: rawRecipe.cookingTime,
         nutritionFacts: {
           calories: rawRecipe.calories,
-          protein: rawRecipe.nutrition_facts.protein,
-          fat: rawRecipe.nutrition_facts.fat,
-          carbs: rawRecipe.nutrition_facts.carbs,
-          fiber: rawRecipe.nutrition_facts.fiber,
+          protein: rawRecipe.nutritionFacts.protein,
+          fat: rawRecipe.nutritionFacts.fat,
+          carbs: rawRecipe.nutritionFacts.carbs,
+          fiber: rawRecipe.nutritionFacts.fiber,
         },
         steps: rawRecipe.steps,
-        cuisineType: rawRecipe.cuisine_type,
-        dietType: rawRecipe.diet_type,
+        cuisineType: rawRecipe.cuisineType,
+        dietType: rawRecipe.dietType,
         img: rawRecipe.img,
       };
 

@@ -63,7 +63,9 @@ export async function checkPaymentMiddleware(
   next: Next
 ) {
   try {
+    console.log("checkPaymentMiddleware");
     const userId = c.get("userId");
+    console.log("userId", userId);
 
     // 获取用户设置
     const { data: settings, error } = await supabase
@@ -71,8 +73,10 @@ export async function checkPaymentMiddleware(
       .select("is_paid, llm_service")
       .eq("user_id", userId)
       .single();
+    console.log("settings", settings, error);
 
     if (error) {
+      console.error("Error fetching user settings:", error);
       return c.json({ error: "Failed to fetch user settings" }, 500);
     }
 

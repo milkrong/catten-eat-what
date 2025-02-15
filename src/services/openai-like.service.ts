@@ -1,5 +1,3 @@
-import type { Recipe } from "../types/recipe";
-
 interface OpenAIConfig {
   apiKey: string;
   apiEndpoint: string;
@@ -59,8 +57,8 @@ const SYSTEM_PROMPT = `# Role
     }
   ],
   "calories": 数字,
-  "cooking_time": 数字,
-  "nutrition_facts": {
+  "cookingTime": 数字,
+  "nutritionFacts": {
     "protein": 数字,
     "fat": 数字,
     "carbs": 数字,
@@ -70,8 +68,8 @@ const SYSTEM_PROMPT = `# Role
     "步骤1",
     "步骤2"
   ],
-  "cuisine_type": ["菜系1", "菜系2"],
-  "diet_type": ["饮食类型1", "饮食类型2"]
+  "cuisineType": ["菜系1", "菜系2"],
+  "dietType": ["饮食类型1", "饮食类型2"]
 }
 \`\`\`
 - 确保所有数值均为纯数字，不要使用分数（如1/2）或带单位的数字。

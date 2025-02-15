@@ -26,15 +26,15 @@ const createRecipeSchema = z.object({
     })
   ),
   calories: z.number().positive(),
-  cooking_time: z.number().positive(),
-  nutrition_facts: z.object({
+  cookingTime: z.number().positive(),
+  nutritionFacts: z.object({
     protein: z.number(),
     carbs: z.number(),
     fat: z.number(),
     fiber: z.number(),
   }),
-  cuisine_type: z.array(z.string()),
-  diet_type: z.array(z.string()),
+  cuisineType: z.array(z.string()),
+  dietType: z.array(z.string()),
 });
 
 // 路由处理

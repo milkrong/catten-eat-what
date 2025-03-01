@@ -1,9 +1,9 @@
 // src/services/recipe.service.ts
-import { eq, lte, desc, and, not, inArray, sql } from 'drizzle-orm';
+import { eq, lte, desc, and, not, inArray, sql, gte, like, asc } from 'drizzle-orm';
 import { db } from '../config/db';
 import { recipes } from '../db/schema';
 import type { Recipe } from '../types/recipe';
-import type { RecipeFilters } from '../types/recipe';
+import type { RecipeFilters, PaginatedResponse } from '../types/recipe';
 
 interface RecommendationParams {
   dietTypes: string[];
@@ -13,29 +13,90 @@ interface RecommendationParams {
 }
 
 export class RecipeService {
-  async getRecipes(filters: RecipeFilters = {}): Promise<Recipe[]> {
+  async getRecipes(filters: RecipeFilters = {}): Promise<PaginatedResponse<Recipe>> {
     const conditions = [];
+    const {
+      page = 1,
+      limit = 10,
+      cuisineType,
+      maxCookingTime,
+      dietType,
+      createdBy,
+      name,
+      minCalories,
+      maxCalories,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = filters;
 
-    if (filters.cuisineType) {
-      conditions.push(eq(recipes.cuisineType, filters.cuisineType));
+    // 应用过滤条件
+    if (cuisineType) {
+      conditions.push(eq(recipes.cuisineType, cuisineType));
     }
-    if (filters.maxCookingTime) {
-      conditions.push(lte(recipes.cookingTime, filters.maxCookingTime));
+    if (maxCookingTime) {
+      conditions.push(lte(recipes.cookingTime, maxCookingTime));
     }
-    if (filters.dietType && filters.dietType.length > 0) {
-      // Note: This is a simplification. You might need to adjust based on your exact needs
-      conditions.push(eq(recipes.dietType, filters.dietType));
+    if (dietType && dietType.length > 0) {
+      // 注意：这是一个简化。你可能需要根据你的确切需求进行调整
+      conditions.push(eq(recipes.dietType, dietType));
     }
-    if (filters.createdBy) {
-      conditions.push(eq(recipes.createdBy, filters.createdBy));
+    if (createdBy) {
+      conditions.push(eq(recipes.createdBy, createdBy));
+    }
+    if (name) {
+      conditions.push(like(recipes.name, `%${name}%`));
+    }
+    if (minCalories) {
+      conditions.push(gte(recipes.calories, minCalories));
+    }
+    if (maxCalories) {
+      conditions.push(lte(recipes.calories, maxCalories));
     }
 
+    // 计算总数
+    const totalCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(recipes)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+    
+    const total = totalCountResult[0]?.count || 0;
+    
+    // 确定排序方式
+    let orderByClause;
+    if (sortBy === 'name') {
+      orderByClause = sortOrder === 'asc' ? asc(recipes.name) : desc(recipes.name);
+    } else if (sortBy === 'views') {
+      orderByClause = sortOrder === 'asc' ? asc(recipes.views) : desc(recipes.views);
+    } else if (sortBy === 'cookingTime') {
+      orderByClause = sortOrder === 'asc' ? asc(recipes.cookingTime) : desc(recipes.cookingTime);
+    } else if (sortBy === 'calories') {
+      orderByClause = sortOrder === 'asc' ? asc(recipes.calories) : desc(recipes.calories);
+    } else {
+      // 默认按创建时间排序
+      orderByClause = sortOrder === 'asc' ? asc(recipes.createdAt) : desc(recipes.createdAt);
+    }
+
+    // 获取分页数据
+    const offset = (page - 1) * limit;
     const result = await db.query.recipes.findMany({
       where: conditions.length > 0 ? and(...conditions) : undefined,
-      limit: 50,
+      orderBy: orderByClause,
+      limit: limit,
+      offset: offset,
     });
 
-    return result as Recipe[];
+    // 计算总页数
+    const pages = Math.ceil(total / limit);
+
+    return {
+      data: result as Recipe[],
+      pagination: {
+        total,
+        page,
+        limit,
+        pages,
+      }
+    };
   }
 
   async getPopularRecipes(limit: number = 50): Promise<Recipe[]> {

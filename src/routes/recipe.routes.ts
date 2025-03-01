@@ -45,19 +45,55 @@ app.get('/', async (c) => {
   try {
     const userId = c.get('userId');
     console.log('get recipes for user:', userId);
+    
+    // 解析查询参数
+    const page = c.req.query('page') ? parseInt(c.req.query('page') || '1') : 1;
+    const limit = c.req.query('limit') ? parseInt(c.req.query('limit') || '10') : 10;
+    const cuisineType = c.req.query('cuisineType');
+    const maxCookingTime = c.req.query('maxCookingTime') 
+      ? parseInt(c.req.query('maxCookingTime') || '') 
+      : undefined;
+    const dietType = c.req.query('dietType')?.split(',');
+    const name = c.req.query('name');
+    const minCalories = c.req.query('minCalories') 
+      ? parseInt(c.req.query('minCalories') || '') 
+      : undefined;
+    const maxCalories = c.req.query('maxCalories') 
+      ? parseInt(c.req.query('maxCalories') || '') 
+      : undefined;
+    const sortBy = c.req.query('sortBy') as RecipeFilters['sortBy'] || 'createdAt';
+    const sortOrder = c.req.query('sortOrder') as RecipeFilters['sortOrder'] || 'desc';
+
     const filters: RecipeFilters = {
-      cuisineType: c.req.query('cuisineType'),
-      maxCookingTime: c.req.query('maxCookingTime')
-        ? parseInt(c.req.query('maxCookingTime') ?? '')
-        : undefined,
-      dietType: c.req.query('dietType')?.split(','),
+      page,
+      limit,
+      cuisineType,
+      maxCookingTime,
+      dietType,
       createdBy: userId,
+      name,
+      minCalories,
+      maxCalories,
+      sortBy,
+      sortOrder
     };
 
-    const recipes = await recipeService.getRecipes(filters);
-    return c.json(recipes);
+    const result = await recipeService.getRecipes(filters);
+    return c.json({
+      success: true,
+      data: {
+        recipes: result.data,
+        pagination: result.pagination
+      }
+    });
   } catch (error: any) {
-    return c.json({ error: error.message }, 500);
+    return c.json({ 
+      success: false, 
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: error.message
+      }
+    }, 500);
   }
 });
 
@@ -68,12 +104,29 @@ app.get('/:id', async (c) => {
     const recipe = await recipeService.getRecipeById(id);
 
     if (!recipe) {
-      return c.json({ error: '食谱不存在' }, 404);
+      return c.json({ 
+        success: false, 
+        error: {
+          code: 'NOT_FOUND',
+          message: '食谱不存在'
+        }
+      }, 404);
     }
 
-    return c.json(recipe);
+    return c.json({
+      success: true,
+      data: {
+        recipe
+      }
+    });
   } catch (error: any) {
-    return c.json({ error: error.message }, 500);
+    return c.json({ 
+      success: false, 
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: error.message
+      }
+    }, 500);
   }
 });
 
@@ -100,10 +153,22 @@ app.post('/', zValidator('json', createRecipeSchema), async (c) => {
       img: recipeData.img,
     });
 
-    return c.json(recipe, 201);
+    return c.json({
+      success: true,
+      message: 'Recipe created successfully',
+      data: {
+        recipe
+      }
+    }, 201);
   } catch (error: any) {
     console.error('Full error:', error); // 添加更详细的错误日志
-    return c.json({ error: error.message }, 500);
+    return c.json({ 
+      success: false, 
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: error.message
+      }
+    }, 500);
   }
 });
 
@@ -117,16 +182,40 @@ app.put('/:id', zValidator('json', createRecipeSchema), async (c) => {
     // 检查权限
     const existingRecipe = await recipeService.getRecipeById(id);
     if (!existingRecipe) {
-      return c.json({ error: '食谱不存在' }, 404);
+      return c.json({ 
+        success: false, 
+        error: {
+          code: 'NOT_FOUND',
+          message: '食谱不存在'
+        }
+      }, 404);
     }
     if (existingRecipe.createdBy !== userId) {
-      return c.json({ error: '没有权限修改此食谱' }, 403);
+      return c.json({ 
+        success: false, 
+        error: {
+          code: 'FORBIDDEN',
+          message: '没有权限修改此食谱'
+        }
+      }, 403);
     }
 
     const updatedRecipe = await recipeService.updateRecipe(id, recipeData);
-    return c.json(updatedRecipe);
+    return c.json({
+      success: true,
+      message: 'Recipe updated successfully',
+      data: {
+        recipe: updatedRecipe
+      }
+    });
   } catch (error: any) {
-    return c.json({ error: error.message }, 500);
+    return c.json({ 
+      success: false, 
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: error.message
+      }
+    }, 500);
   }
 });
 
@@ -139,16 +228,37 @@ app.delete('/:id', async (c) => {
     // 检查权限
     const existingRecipe = await recipeService.getRecipeById(id);
     if (!existingRecipe) {
-      return c.json({ error: '食谱不存在' }, 404);
+      return c.json({ 
+        success: false, 
+        error: {
+          code: 'NOT_FOUND',
+          message: '食谱不存在'
+        }
+      }, 404);
     }
     if (existingRecipe.createdBy !== userId) {
-      return c.json({ error: '没有权限删除此食谱' }, 403);
+      return c.json({ 
+        success: false, 
+        error: {
+          code: 'FORBIDDEN',
+          message: '没有权限删除此食谱'
+        }
+      }, 403);
     }
 
     await recipeService.deleteRecipe(id);
-    return c.json({ message: '删除成功' });
+    return c.json({
+      success: true,
+      message: '删除成功'
+    });
   } catch (error: any) {
-    return c.json({ error: error.message }, 500);
+    return c.json({ 
+      success: false, 
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: error.message
+      }
+    }, 500);
   }
 });
 

@@ -9,6 +9,23 @@ export interface RecipeFilters {
   maxCookingTime?: number;
   dietType?: string[];
   createdBy?: string;
+  page?: number;
+  limit?: number;
+  name?: string;
+  minCalories?: number;
+  maxCalories?: number;
+  sortBy?: 'name' | 'createdAt' | 'views' | 'cookingTime' | 'calories';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
 }
 
 export interface Ingredient {

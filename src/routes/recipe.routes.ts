@@ -47,19 +47,19 @@ app.get('/', async (c) => {
     console.log('get recipes for user:', userId);
     
     // 解析查询参数
-    const page = c.req.query('page') ? parseInt(c.req.query('page') || '1') : 1;
-    const limit = c.req.query('limit') ? parseInt(c.req.query('limit') || '10') : 10;
+    const page = c.req.query('page') ? Number.parseInt(c.req.query('page') || '1') : 1;
+    const limit = c.req.query('limit') ? Number.parseInt(c.req.query('limit') || '10') : 10;
     const cuisineType = c.req.query('cuisineType');
     const maxCookingTime = c.req.query('maxCookingTime') 
-      ? parseInt(c.req.query('maxCookingTime') || '') 
+      ? Number.parseInt(c.req.query('maxCookingTime') || '') 
       : undefined;
     const dietType = c.req.query('dietType')?.split(',');
     const name = c.req.query('name');
     const minCalories = c.req.query('minCalories') 
-      ? parseInt(c.req.query('minCalories') || '') 
+      ? Number.parseInt(c.req.query('minCalories') || '') 
       : undefined;
     const maxCalories = c.req.query('maxCalories') 
-      ? parseInt(c.req.query('maxCalories') || '') 
+      ? Number.parseInt(c.req.query('maxCalories') || '') 
       : undefined;
     const sortBy = c.req.query('sortBy') as RecipeFilters['sortBy'] || 'createdAt';
     const sortOrder = c.req.query('sortOrder') as RecipeFilters['sortOrder'] || 'desc';

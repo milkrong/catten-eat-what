@@ -1,7 +1,7 @@
 // src/routes/admin.routes.ts
 import { Hono } from 'hono';
 import { CacheWarmupProgressService } from '../services/cache-warmup-progress.service';
-import { WarmupSchedulerService } from '../services/warmup-scheduler.service';
+import type { WarmupSchedulerService } from '../services/warmup-scheduler.service';
 
 const app = new Hono();
 const progressService = new CacheWarmupProgressService();
@@ -19,7 +19,7 @@ export const initAdminRoutes = (warmupScheduler: WarmupSchedulerService) => {
 
   // Detailed warmup session management
   app.get('/cache/warmup/sessions', async (c) => {
-    const limit = parseInt(c.req.query('limit') || '10');
+    const limit = Number.parseInt(c.req.query('limit') || '10');
     const sessions = await progressService.getRecentSessions(limit);
     return c.json(sessions);
   });

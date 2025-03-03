@@ -1,67 +1,107 @@
-# API Documentation
+# API 文档
 
-## Base URL
+本文档提供了所有可用的 API 接口信息，包括请求方法、URL、参数说明和响应格式。
 
-```
-https://eatwhatapi.cattenbox.com/api
-```
+## 目录
 
-For local development:
+- [用户相关](#用户相关)
+- [认证相关](#认证相关)
+- [食谱相关](#食谱相关)
+- [推荐相关](#推荐相关)
+- [膳食计划相关](#膳食计划相关)
+- [管理员相关](#管理员相关)
 
-```
-http://localhost:3002/api
-```
+## 用户相关
 
-## Authentication
+### 上传用户头像
 
-All authenticated endpoints require a valid JWT token in the Authorization header:
+**请求方法**: POST  
+**URL**: `/api/user/avatar`  
+**描述**: 上传并处理用户头像图片  
+**认证要求**: 需要用户登录
 
-```
-Authorization: Bearer <token>
-```
+**请求体**:
 
-### Authentication Endpoints
+- `avatar`: 图片文件 (FormData)
 
-#### Register a new user
-
-```
-POST /api/auth/register
-```
-
-Request body:
+**响应**:
 
 ```json
 {
-  "email": "user@example.com",
-  "password": "password123",
-  "username": "username"
+  "avatarUrl": "https://example.com/path/to/image.webp"
 }
 ```
 
-Response:
+**错误响应**:
 
 ```json
 {
-  "success": true,
-  "message": "User registered successfully",
-  "data": {
-    "user": {
-      "id": "user_id",
-      "email": "user@example.com",
-      "username": "username"
-    },
-    "token": "jwt_token"
+  "error": "错误信息"
+}
+```
+
+### 获取用户信息
+
+**请求方法**: GET  
+**URL**: `/api/user/profile`  
+**描述**: 获取当前登录用户的个人信息  
+**认证要求**: 需要用户登录
+
+**响应**:
+
+```json
+{
+  "id": "user-id",
+  "name": "用户名",
+  "email": "user@example.com",
+  "avatarUrl": "https://example.com/path/to/avatar.webp",
+  "preferences": {
+    // 用户偏好设置
   }
 }
 ```
 
-#### User Login
+### 更新用户信息
 
-```
-POST /api/auth/login
+**请求方法**: PUT  
+**URL**: `/api/user/profile`  
+**描述**: 更新当前登录用户的个人信息  
+**认证要求**: 需要用户登录
+
+**请求体**:
+
+```json
+{
+  "name": "新用户名",
+  "preferences": {
+    // 更新的偏好设置
+  }
+}
 ```
 
-Request body:
+**响应**:
+
+```json
+{
+  "id": "user-id",
+  "name": "新用户名",
+  "email": "user@example.com",
+  "avatarUrl": "https://example.com/path/to/avatar.webp",
+  "preferences": {
+    // 更新后的偏好设置
+  }
+}
+```
+
+## 认证相关
+
+### 用户登录
+
+**请求方法**: POST  
+**URL**: `/api/auth/login`  
+**描述**: 用户登录并获取认证令牌
+
+**请求体**:
 
 ```json
 {
@@ -70,757 +110,406 @@ Request body:
 }
 ```
 
-Response:
+**响应**:
 
 ```json
 {
-  "success": true,
-  "message": "Login successful",
-  "data": {
-    "user": {
-      "id": "user_id",
-      "email": "user@example.com",
-      "username": "username"
-    },
-    "token": "jwt_token"
+  "token": "jwt-token",
+  "user": {
+    "id": "user-id",
+    "name": "用户名",
+    "email": "user@example.com"
   }
 }
 ```
 
-#### Get Current User
+### 用户注册
 
-```
-GET /api/auth/me
-```
+**请求方法**: POST  
+**URL**: `/api/auth/register`  
+**描述**: 创建新用户账户
 
-Response:
+**请求体**:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "user": {
-      "id": "user_id",
-      "email": "user@example.com",
-      "username": "username"
-    }
+  "name": "用户名",
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+**响应**:
+
+```json
+{
+  "token": "jwt-token",
+  "user": {
+    "id": "user-id",
+    "name": "用户名",
+    "email": "user@example.com"
   }
 }
 ```
 
-#### Refresh Token
+### 刷新令牌
 
-```
-POST /api/auth/refresh
-```
+**请求方法**: POST  
+**URL**: `/api/auth/refresh`  
+**描述**: 使用刷新令牌获取新的访问令牌  
+**认证要求**: 需要有效的刷新令牌
 
-Response:
+**响应**:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "token": "new_jwt_token"
-  }
+  "token": "new-jwt-token"
 }
 ```
 
-#### Logout
+## 食谱相关
 
-```
-POST /api/auth/logout
-```
+### 获取食谱列表
 
-Response:
+**请求方法**: GET  
+**URL**: `/api/recipes`  
+**描述**: 获取食谱列表，支持分页和多种过滤条件
 
-```json
-{
-  "success": true,
-  "message": "Logged out successfully"
-}
-```
+**查询参数**:
 
-## Recipes
+- `page`: 页码 (默认: 1)
+- `limit`: 每页数量 (默认: 10)
+- `cuisineType`: 菜系类型
+- `maxCookingTime`: 最大烹饪时间（分钟）
+- `dietType`: 饮食类型，多个值用逗号分隔
+- `name`: 按名称搜索
+- `minCalories`: 最小卡路里
+- `maxCalories`: 最大卡路里
+- `sortBy`: 排序字段 (默认: createdAt)
+- `sortOrder`: 排序方向 (asc/desc, 默认: desc)
 
-### Recipe Endpoints
-
-#### Get All Recipes
-
-```
-GET /api/recipes
-```
-
-Query Parameters:
-
-- `page` (optional): Page number for pagination (default: 1)
-- `limit` (optional): Number of recipes per page (default: 10)
-- `cuisineType` (optional): Filter by cuisine type (e.g., "Chinese", "Italian")
-- `dietType` (optional): Filter by diet type, comma-separated (e.g., "Vegetarian,Gluten-free")
-- `name` (optional): Filter by recipe name (partial match)
-- `minCalories` (optional): Filter by minimum calories
-- `maxCalories` (optional): Filter by maximum calories
-- `maxCookingTime` (optional): Filter by maximum cooking time in minutes
-- `sortBy` (optional): Sort by field (options: "name", "createdAt", "views", "cookingTime", "calories", default: "createdAt")
-- `sortOrder` (optional): Sort order (options: "asc", "desc", default: "desc")
-
-Response:
+**响应**:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "recipes": [
-      {
-        "id": "recipe_id",
-        "name": "Recipe Name",
-        "ingredients": [
-          {
-            "name": "Ingredient",
-            "amount": 100,
-            "unit": "g"
-          }
-        ],
-        "calories": 500,
-        "cooking_time": 30,
-        "nutrition_facts": {
-          "protein": 20,
-          "fat": 10,
-          "carbs": 50,
-          "fiber": 5
-        },
-        "steps": ["Step 1", "Step 2"],
-        "cuisine_type": ["Chinese"],
-        "diet_type": ["Balanced"]
-      }
-    ],
-    "pagination": {
-      "total": 100,
-      "page": 1,
-      "limit": 10,
-      "pages": 10
-    }
-  }
-}
-```
-
-#### Get Recipe by ID
-
-```
-GET /api/recipes/:id
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "recipe": {
-      "id": "recipe_id",
-      "name": "Recipe Name",
+  "data": [
+    {
+      "id": "recipe-id",
+      "name": "食谱名称",
+      "description": "食谱描述",
+      "cookingTime": 30,
+      "calories": 350,
+      "imageUrl": "https://example.com/path/to/image.jpg",
+      "cuisineType": "中式",
+      "dietType": ["素食"],
       "ingredients": [
         {
-          "name": "Ingredient",
-          "amount": 100,
-          "unit": "g"
+          "name": "食材名称",
+          "amount": "100g"
         }
       ],
-      "calories": 500,
-      "cooking_time": 30,
-      "nutrition_facts": {
-        "protein": 20,
-        "fat": 10,
-        "carbs": 50,
-        "fiber": 5
-      },
-      "steps": ["Step 1", "Step 2"],
-      "cuisine_type": ["Chinese"],
-      "diet_type": ["Balanced"]
-    }
-  }
-}
-```
-
-#### Create Recipe
-
-```
-POST /api/recipes
-```
-
-Request body:
-
-```json
-{
-  "name": "Recipe Name",
-  "ingredients": [
-    {
-      "name": "Ingredient",
-      "amount": 100,
-      "unit": "g"
+      "steps": ["步骤1", "步骤2"]
     }
   ],
-  "calories": 500,
-  "cooking_time": 30,
-  "nutrition_facts": {
-    "protein": 20,
-    "fat": 10,
-    "carbs": 50,
-    "fiber": 5
-  },
-  "steps": ["Step 1", "Step 2"],
-  "cuisine_type": ["Chinese"],
-  "diet_type": ["Balanced"]
+  "pagination": {
+    "total": 100,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 10
+  }
 }
 ```
 
-Response:
+### 获取食谱详情
+
+**请求方法**: GET  
+**URL**: `/api/recipes/:id`  
+**描述**: 获取特定食谱的详细信息
+
+**路径参数**:
+
+- `id`: 食谱 ID
+
+**响应**:
 
 ```json
 {
-  "success": true,
-  "message": "Recipe created successfully",
-  "data": {
-    "recipe": {
-      "id": "recipe_id",
-      "name": "Recipe Name",
-      "ingredients": [
-        {
-          "name": "Ingredient",
-          "amount": 100,
-          "unit": "g"
-        }
-      ],
-      "calories": 500,
-      "cooking_time": 30,
-      "nutrition_facts": {
-        "protein": 20,
-        "fat": 10,
-        "carbs": 50,
-        "fiber": 5
-      },
-      "steps": ["Step 1", "Step 2"],
-      "cuisine_type": ["Chinese"],
-      "diet_type": ["Balanced"]
+  "id": "recipe-id",
+  "name": "食谱名称",
+  "description": "食谱描述",
+  "cookingTime": 30,
+  "calories": 350,
+  "imageUrl": "https://example.com/path/to/image.jpg",
+  "cuisineType": "中式",
+  "dietType": ["素食"],
+  "ingredients": [
+    {
+      "name": "食材名称",
+      "amount": "100g"
     }
+  ],
+  "steps": ["步骤1", "步骤2"],
+  "nutrition": {
+    "protein": "10g",
+    "fat": "5g",
+    "carbs": "30g"
   }
 }
 ```
 
-#### Update Recipe
+## 推荐相关
 
-```
-PUT /api/recipes/:id
-```
+### 获取个性化食谱推荐
 
-Request body:
+**请求方法**: GET  
+**URL**: `/api/recommendations`  
+**描述**: 根据用户偏好获取个性化食谱推荐  
+**认证要求**: 需要用户登录
 
-```json
-{
-  "name": "Updated Recipe Name",
-  "description": "Updated description"
-}
-```
+**查询参数**:
 
-Response:
+- `limit`: 推荐数量 (默认: 5)
+
+**响应**:
 
 ```json
 {
-  "success": true,
-  "message": "Recipe updated successfully",
-  "data": {
-    "recipe": {
-      "id": "recipe_id",
-      "name": "Updated Recipe Name",
-      "description": "Updated description",
-      "ingredients": [
-        {
-          "name": "Ingredient",
-          "amount": 100,
-          "unit": "g"
-        }
-      ],
-      "calories": 500,
-      "cooking_time": 30,
-      "nutrition_facts": {
-        "protein": 20,
-        "fat": 10,
-        "carbs": 50,
-        "fiber": 5
-      },
-      "steps": ["Step 1", "Step 2"],
-      "cuisine_type": ["Chinese"],
-      "diet_type": ["Balanced"]
+  "recommendations": [
+    {
+      "id": "recipe-id",
+      "name": "食谱名称",
+      "description": "食谱描述",
+      "cookingTime": 30,
+      "calories": 350,
+      "imageUrl": "https://example.com/path/to/image.jpg",
+      "cuisineType": "中式",
+      "matchScore": 0.95
     }
-  }
+  ]
 }
 ```
 
-#### Delete Recipe
+### 获取热门食谱
 
-```
-DELETE /api/recipes/:id
-```
+**请求方法**: GET  
+**URL**: `/api/recommendations/popular`  
+**描述**: 获取当前热门食谱
 
-Response:
+**查询参数**:
+
+- `limit`: 返回数量 (默认: 10)
+
+**响应**:
 
 ```json
 {
-  "success": true,
-  "message": "Recipe deleted successfully"
+  "popular": [
+    {
+      "id": "recipe-id",
+      "name": "食谱名称",
+      "description": "食谱描述",
+      "cookingTime": 30,
+      "calories": 350,
+      "imageUrl": "https://example.com/path/to/image.jpg",
+      "viewCount": 1500
+    }
+  ]
 }
 ```
 
-## User Favorites
+## 膳食计划相关
 
-### User Favorites Endpoints
+### 创建膳食计划
 
-#### Get User's Favorite Recipes
+**请求方法**: POST  
+**URL**: `/api/meal-plans`  
+**描述**: 创建新的膳食计划  
+**认证要求**: 需要用户登录
 
-```
-GET /api/users/favorites
-```
-
-Response:
+**请求体**:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "favorites": [
-      {
-        "id": "recipe_id",
-        "name": "Recipe Name",
-        "ingredients": [
-          {
-            "name": "Ingredient",
-            "amount": 100,
-            "unit": "g"
-          }
-        ],
-        "calories": 500,
-        "cooking_time": 30,
-        "nutrition_facts": {
-          "protein": 20,
-          "fat": 10,
-          "carbs": 50,
-          "fiber": 5
-        },
-        "steps": ["Step 1", "Step 2"],
-        "cuisine_type": ["Chinese"],
-        "diet_type": ["Balanced"]
-      }
-    ]
-  }
+  "name": "我的一周计划",
+  "startDate": "2023-06-01",
+  "endDate": "2023-06-07",
+  "meals": [
+    {
+      "date": "2023-06-01",
+      "mealType": "breakfast",
+      "recipeId": "recipe-id-1"
+    },
+    {
+      "date": "2023-06-01",
+      "mealType": "lunch",
+      "recipeId": "recipe-id-2"
+    }
+  ]
 }
 ```
 
-#### Add Recipe to Favorites
-
-```
-POST /api/users/favorites/:recipeId
-```
-
-Response:
+**响应**:
 
 ```json
 {
-  "success": true,
-  "message": "Recipe added to favorites"
-}
-```
-
-#### Remove Recipe from Favorites
-
-```
-DELETE /api/users/favorites/:recipeId
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "message": "Recipe removed from favorites"
-}
-```
-
-## Meal Plans
-
-### Meal Plan Endpoints
-
-#### Get User's Meal Plans
-
-```
-GET /api/meal-plans
-```
-
-Query Parameters:
-
-- `startDate`: Start date in ISO format (e.g., 2024-02-01T00:00:00Z)
-- `endDate`: End date in ISO format (e.g., 2024-02-07T23:59:59Z)
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "mealPlans": [
-      {
-        "id": "meal_plan_id",
-        "date": "2024-02-01T12:00:00Z",
-        "meal_type": "lunch",
-        "recipe": {
-          "id": "recipe_id",
-          "name": "Recipe Name",
-          "calories": 500,
-          "cooking_time": 30,
-          "cuisine_type": ["Chinese"],
-          "diet_type": ["Balanced"]
-        }
-      }
-    ]
-  }
-}
-```
-
-#### Create Meal Plan
-
-```
-POST /api/meal-plans
-```
-
-Request body:
-
-```json
-{
-  "date": "2024-02-01T12:00:00Z",
-  "meal_type": "lunch",
-  "recipe_id": "recipe_id"
-}
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "message": "Meal plan created successfully",
-  "data": {
-    "mealPlan": {
-      "id": "meal_plan_id",
-      "date": "2024-02-01T12:00:00Z",
-      "meal_type": "lunch",
+  "id": "meal-plan-id",
+  "name": "我的一周计划",
+  "startDate": "2023-06-01",
+  "endDate": "2023-06-07",
+  "meals": [
+    {
+      "id": "meal-id-1",
+      "date": "2023-06-01",
+      "mealType": "breakfast",
       "recipe": {
-        "id": "recipe_id",
-        "name": "Recipe Name"
+        "id": "recipe-id-1",
+        "name": "早餐食谱",
+        "imageUrl": "https://example.com/path/to/image.jpg"
       }
-    }
-  }
-}
-```
-
-#### Update Meal Plan
-
-```
-PUT /api/meal-plans/:id
-```
-
-Request body:
-
-```json
-{
-  "meal_type": "dinner"
-}
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "message": "Meal plan updated successfully",
-  "data": {
-    "mealPlan": {
-      "id": "meal_plan_id",
-      "date": "2024-02-01T12:00:00Z",
-      "meal_type": "dinner",
+    },
+    {
+      "id": "meal-id-2",
+      "date": "2023-06-01",
+      "mealType": "lunch",
       "recipe": {
-        "id": "recipe_id",
-        "name": "Recipe Name"
+        "id": "recipe-id-2",
+        "name": "午餐食谱",
+        "imageUrl": "https://example.com/path/to/image.jpg"
       }
     }
-  }
+  ]
 }
 ```
 
-#### Delete Meal Plan
+### 获取用户膳食计划
 
-```
-DELETE /api/meal-plans/:id
-```
+**请求方法**: GET  
+**URL**: `/api/meal-plans`  
+**描述**: 获取当前用户的所有膳食计划  
+**认证要求**: 需要用户登录
 
-Response:
+**响应**:
 
 ```json
 {
-  "success": true,
-  "message": "Meal plan deleted successfully"
+  "mealPlans": [
+    {
+      "id": "meal-plan-id",
+      "name": "我的一周计划",
+      "startDate": "2023-06-01",
+      "endDate": "2023-06-07",
+      "createdAt": "2023-05-30T12:00:00Z"
+    }
+  ]
 }
 ```
 
-#### Generate Meal Plan
+### 获取膳食计划详情
 
-```
-POST /api/meal-plans/generate
-```
+**请求方法**: GET  
+**URL**: `/api/meal-plans/:id`  
+**描述**: 获取特定膳食计划的详细信息  
+**认证要求**: 需要用户登录
 
-Request body:
+**路径参数**:
 
-```json
-{
-  "startDate": "2024-02-01T00:00:00Z",
-  "endDate": "2024-02-07T23:59:59Z",
-  "preferences": {
-    "cuisineTypes": ["Chinese", "Japanese"],
-    "dietTypes": ["Balanced"],
-    "maxCookingTime": 45,
-    "caloriesPerDay": 2000
-  }
-}
-```
+- `id`: 膳食计划 ID
 
-Response:
+**响应**:
 
 ```json
 {
-  "success": true,
-  "message": "Meal plan generated successfully",
-  "data": {
-    "mealPlans": [
-      {
-        "id": "meal_plan_id",
-        "date": "2024-02-01T12:00:00Z",
-        "meal_type": "lunch",
-        "recipe": {
-          "id": "recipe_id",
-          "name": "Recipe Name"
-        }
-      }
-    ]
-  }
-}
-```
-
-## Recommendations
-
-### Recommendation Endpoints
-
-#### Get Single Meal Recommendation
-
-```
-POST /api/recommendations/single
-```
-
-Request body:
-
-```json
-{
-  "preferences": {
-    "diet_type": ["Balanced"],
-    "cuisine_type": ["Chinese"],
-    "allergies": ["Broccoli"],
-    "restrictions": ["Low Protein"],
-    "calories_min": 1800,
-    "calories_max": 2200,
-    "max_cooking_time": 45,
-    "meals_per_day": 3
-  },
-  "provider": "siliconflow"
-}
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "recommendation": {
-      "id": "recommendation_id",
+  "id": "meal-plan-id",
+  "name": "我的一周计划",
+  "startDate": "2023-06-01",
+  "endDate": "2023-06-07",
+  "meals": [
+    {
+      "id": "meal-id-1",
+      "date": "2023-06-01",
+      "mealType": "breakfast",
       "recipe": {
-        "id": "recipe_id",
-        "name": "Recipe Name",
-        "ingredients": [
-          {
-            "name": "Ingredient",
-            "amount": 100,
-            "unit": "g"
-          }
-        ],
-        "calories": 500,
-        "cooking_time": 30,
-        "nutrition_facts": {
-          "protein": 20,
-          "fat": 10,
-          "carbs": 50,
-          "fiber": 5
-        },
-        "steps": ["Step 1", "Step 2"],
-        "cuisine_type": ["Chinese"],
-        "diet_type": ["Balanced"]
+        "id": "recipe-id-1",
+        "name": "早餐食谱",
+        "cookingTime": 15,
+        "calories": 250,
+        "imageUrl": "https://example.com/path/to/image.jpg"
       }
+    }
+  ],
+  "nutritionSummary": {
+    "totalCalories": 8750,
+    "averageCaloriesPerDay": 1250,
+    "macroDistribution": {
+      "protein": "25%",
+      "fat": "30%",
+      "carbs": "45%"
     }
   }
 }
 ```
 
-#### Get Daily Recommendations
+## 管理员相关
 
-```
-POST /api/recommendations/daily
-```
+### 缓存预热状态
 
-Request body:
+**请求方法**: GET  
+**URL**: `/api/admin/cache/warmup/status`  
+**描述**: 获取缓存预热的当前状态  
+**认证要求**: 需要管理员权限
+
+**响应**:
 
 ```json
 {
-  "preferences": {
-    "diet_type": ["Balanced"],
-    "cuisine_type": ["Sichuan", "Cantonese"],
-    "allergies": [],
-    "restrictions": [],
-    "calories_min": 1800,
-    "calories_max": 2200,
-    "max_cooking_time": 45,
-    "meals_per_day": 3
-  },
-  "provider": "siliconflow"
+  "isRunning": true,
+  "progress": 65,
+  "startedAt": "2023-06-01T10:00:00Z",
+  "estimatedCompletion": "2023-06-01T10:15:00Z"
 }
 ```
 
-Response:
+### 启动缓存预热
+
+**请求方法**: POST  
+**URL**: `/api/admin/cache/warmup/start`  
+**描述**: 启动缓存预热过程  
+**认证要求**: 需要管理员权限
+
+**响应**:
 
 ```json
 {
   "success": true,
-  "data": {
-    "recommendations": [
-      {
-        "meal_type": "breakfast",
-        "recipe": {
-          "id": "recipe_id",
-          "name": "Breakfast Recipe",
-          "calories": 400,
-          "cooking_time": 15,
-          "cuisine_type": ["Chinese"],
-          "diet_type": ["Balanced"]
-        }
-      },
-      {
-        "meal_type": "lunch",
-        "recipe": {
-          "id": "recipe_id",
-          "name": "Lunch Recipe",
-          "calories": 700,
-          "cooking_time": 30,
-          "cuisine_type": ["Sichuan"],
-          "diet_type": ["Balanced"]
-        }
-      },
-      {
-        "meal_type": "dinner",
-        "recipe": {
-          "id": "recipe_id",
-          "name": "Dinner Recipe",
-          "calories": 800,
-          "cooking_time": 45,
-          "cuisine_type": ["Cantonese"],
-          "diet_type": ["Balanced"]
-        }
-      }
-    ]
-  }
+  "sessionId": "warmup-session-id",
+  "startedAt": "2023-06-01T10:00:00Z"
 }
 ```
 
-## Admin
+### 获取缓存预热会话列表
 
-### Admin Endpoints
+**请求方法**: GET  
+**URL**: `/api/admin/cache/warmup/sessions`  
+**描述**: 获取最近的缓存预热会话列表  
+**认证要求**: 需要管理员权限
 
-#### Get All Users (Admin only)
+**查询参数**:
 
-```
-GET /api/admin/users
-```
+- `limit`: 返回数量 (默认: 10)
 
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "users": [
-      {
-        "id": "user_id",
-        "email": "user@example.com",
-        "username": "username",
-        "created_at": "2024-01-01T00:00:00Z"
-      }
-    ]
-  }
-}
-```
-
-#### Get User by ID (Admin only)
-
-```
-GET /api/admin/users/:id
-```
-
-Response:
+**响应**:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "user": {
-      "id": "user_id",
-      "email": "user@example.com",
-      "username": "username",
-      "created_at": "2024-01-01T00:00:00Z"
+  "sessions": [
+    {
+      "id": "warmup-session-id",
+      "startedAt": "2023-06-01T10:00:00Z",
+      "completedAt": "2023-06-01T10:15:00Z",
+      "status": "completed",
+      "itemsProcessed": 1500,
+      "totalItems": 1500
     }
-  }
+  ]
 }
 ```
-
-## Error Responses
-
-All API endpoints return a consistent error format:
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Error message description"
-  }
-}
-```
-
-Common error codes:
-
-- `UNAUTHORIZED`: Authentication required or invalid token
-- `FORBIDDEN`: User does not have permission to access the resource
-- `NOT_FOUND`: Resource not found
-- `VALIDATION_ERROR`: Invalid request parameters
-- `INTERNAL_SERVER_ERROR`: Server error
-
-## Rate Limiting
-
-API requests are subject to rate limiting. The current limits are:
-
-- 100 requests per minute for authenticated users
-- 20 requests per minute for unauthenticated users
-
-When rate limited, the API will return a 429 Too Many Requests status code with headers indicating the rate limit and when it will reset.

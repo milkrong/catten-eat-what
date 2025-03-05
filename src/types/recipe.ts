@@ -1,5 +1,5 @@
-import { InferModel } from 'drizzle-orm';
-import { recipes } from '../db/schema';
+import type { InferModel } from 'drizzle-orm';
+import type { recipes } from '../db/schema';
 
 export type Recipe = InferModel<typeof recipes>;
 export type NewRecipe = InferModel<typeof recipes, 'insert'>;

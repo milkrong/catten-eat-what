@@ -1,5 +1,5 @@
 // src/services/recipe.service.ts
-import { eq, lte, desc, and, not, inArray, sql, gte, like, asc } from 'drizzle-orm';
+import { eq, desc, asc, sql, and, or, inArray, lte, gte, like, not } from 'drizzle-orm';
 import { db } from '../config/db';
 import { recipes } from '../db/schema';
 import type { Recipe } from '../types/recipe';
@@ -62,7 +62,7 @@ export class RecipeService {
     const total = totalCountResult[0]?.count || 0;
     
     // 确定排序方式
-    let orderByClause;
+    let orderByClause: ReturnType<typeof desc> | ReturnType<typeof asc>;
     if (sortBy === 'name') {
       orderByClause = sortOrder === 'asc' ? asc(recipes.name) : desc(recipes.name);
     } else if (sortBy === 'views') {
@@ -99,7 +99,7 @@ export class RecipeService {
     };
   }
 
-  async getPopularRecipes(limit: number = 50): Promise<Recipe[]> {
+  async getPopularRecipes(limit = 50): Promise<Recipe[]> {
     const result = await db.query.recipes.findMany({
       orderBy: desc(recipes.views),
       limit,
@@ -108,7 +108,7 @@ export class RecipeService {
     return result as Recipe[];
   }
 
-  async getRecentRecipes(limit: number = 30): Promise<Recipe[]> {
+  async getRecentRecipes(limit = 30): Promise<Recipe[]> {
     const result = await db.query.recipes.findMany({
       orderBy: desc(recipes.createdAt),
       limit,
@@ -119,7 +119,7 @@ export class RecipeService {
 
   async getRecipesByCuisine(
     cuisineType: string,
-    limit: number = 10
+    limit = 10
   ): Promise<Recipe[]> {
     const result = await db.query.recipes.findMany({
       where: eq(recipes.cuisineType, cuisineType),
@@ -130,12 +130,12 @@ export class RecipeService {
     return result as Recipe[];
   }
 
-  async getRecipeById(id: string): Promise<Recipe | null> {
+  async getRecipeById(recipeId: string): Promise<Recipe | undefined> {
     const result = await db.query.recipes.findFirst({
-      where: eq(recipes.id, id),
+      where: eq(recipes.id, recipeId)
     });
-
-    return result as Recipe | null;
+    
+    return result;
   }
 
   async incrementViews(id: string): Promise<void> {
@@ -201,5 +201,44 @@ export class RecipeService {
     });
 
     return result;
+  }
+
+  async getSimilarRecipes(recipeIds: string[]): Promise<Recipe[]> {
+    if (!recipeIds.length) {
+      return [];
+    }
+    
+    // 使用正确的inArray操作
+    const similarRecipes = await db.select()
+      .from(recipes)
+      .where(inArray(recipes.id, recipeIds));
+    
+    return similarRecipes;
+  }
+
+  async countRecipes(filters: Record<string, any> = {}): Promise<number> {
+    const query = db.select({ count: sql`count(*)`.as('count') }).from(recipes);
+    
+    // 应用过滤条件
+    if (Object.keys(filters).length > 0) {
+      const conditions = [];
+      
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== undefined && value !== null) {
+          // Check if key is a valid column name in recipes table
+          const columnName = key as keyof typeof recipes._.columns;
+          if (columnName in recipes._.columns) {
+            conditions.push(eq(recipes[columnName], value));
+          }
+        }
+      }
+      
+      if (conditions.length > 0) {
+        query.where(and(...conditions));
+      }
+    }
+    
+    const result = await query;
+    return Number(result[0]?.count || 0);
   }
 }

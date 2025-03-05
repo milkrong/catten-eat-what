@@ -4,9 +4,14 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { RecipeService } from '../services/recipe.service';
 import type { Recipe, RecipeFilters } from '../types';
+import { RecommendationService } from '../services/recommendation.service';
+import { vectorRecommendationService } from '../services/vector-recommendation.service';
+import { embeddingService } from '../services/embedding.service';
+import { qdrantService } from '../services/qdrant.service';
 
 // 创建Recipe服务实例
 const recipeService = new RecipeService();
+const recService = new RecommendationService();
 
 // 验证Schema
 const createRecipeSchema = z.object({
@@ -258,6 +263,64 @@ app.delete('/:id', async (c) => {
         code: 'INTERNAL_SERVER_ERROR',
         message: error.message
       }
+    }, 500);
+  }
+});
+
+// 获取今日推荐接口
+app.get('/recommendations/today', async (c) => {
+  try {
+    // 初始化向量数据库
+    await qdrantService.initialize();
+    
+    const limit = Number.parseInt(c.req.query('limit') || '10');
+    const page = Number.parseInt(c.req.query('page') || '1');
+    const userId = c.req.query('userId');
+    
+    // 获取推荐
+    const recommendations = await vectorRecommendationService.getDailyRecommendations({
+      userId,
+      limit,
+      page
+    });
+    
+    return c.json({
+      success: true,
+      ...recommendations
+    });
+  } catch (error: any) {
+    console.error('获取今日推荐失败:', error);
+    return c.json({
+      success: false,
+      message: '获取推荐失败',
+      error: error.message
+    }, 500);
+  }
+});
+
+// 相似食谱查询接口
+app.get('/recommendations/similar/:recipeId', async (c) => {
+  try {
+    const recipeId = c.req.param('recipeId');
+    const limit = Number.parseInt(c.req.query('limit') || '5');
+    
+    if (!recipeId) {
+      return c.json({ success: false, message: '未提供食谱ID' }, 400);
+    }
+    
+    // 使用向量推荐服务获取相似食谱
+    const recommendations = await vectorRecommendationService.getSimilarRecipes(recipeId, limit);
+    
+    return c.json({
+      success: true,
+      ...recommendations
+    });
+  } catch (error: any) {
+    console.error('获取相似食谱失败:', error);
+    return c.json({
+      success: false,
+      message: '获取相似食谱失败',
+      error: error.message
     }, 500);
   }
 });

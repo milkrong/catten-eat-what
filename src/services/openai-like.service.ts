@@ -289,4 +289,29 @@ export class OpenAIService {
       throw new Error("LLM API error: Unknown error occurred");
     }
   }
+
+  async createEmbedding(text: string): Promise<{ data: { embedding: number[] }[] }> {
+    try {
+      const response = await fetch(`${this.apiEndpoint}/embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          input: text,
+          model: this.model
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+
+      return await response.json() as { data: { embedding: number[] }[] };
+    } catch (error) {
+      console.error('Error creating embedding:', error);
+      throw error;
+    }
+  }
 }

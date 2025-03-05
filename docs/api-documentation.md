@@ -292,8 +292,8 @@
 ### 获取热门食谱
 
 **请求方法**: GET  
-**URL**: `/api/recommendations/popular`  
-**描述**: 获取当前热门食谱
+**URL**: `/api/recipes/popular`  
+**描述**: 获取热门食谱列表
 
 **查询参数**:
 
@@ -314,6 +314,75 @@
       "viewCount": 1500
     }
   ]
+}
+```
+
+### 获取今日推荐
+
+**请求方法**: GET  
+**URL**: `/api/recipes/recommendations/today`  
+**描述**: 获取基于向量相似度的今日推荐食谱
+**认证要求**: 登录后能获得个性化推荐，未登录时提供通用推荐
+
+**查询参数**:
+
+- `limit`: 返回数量 (默认: 10)
+- `page`: 页码 (默认: 1)
+- `userId`: 用户 ID (登录用户可选)
+
+**响应**:
+
+```json
+{
+  "success": true,
+  "recipes": [
+    {
+      "id": "recipe-id",
+      "name": "食谱名称",
+      "description": "食谱描述",
+      "cookingTime": 30,
+      "calories": 350,
+      "cuisineType": "中式",
+      "dietType": ["素食"],
+      "img": "https://example.com/path/to/image.jpg"
+    }
+  ],
+  "title": "今日推荐"
+}
+```
+
+### 获取相似食谱
+
+**请求方法**: GET  
+**URL**: `/api/recipes/recommendations/similar/:recipeId`  
+**描述**: 根据指定的食谱 ID 查找相似的食谱
+
+**路径参数**:
+
+- `recipeId`: 食谱 ID
+
+**查询参数**:
+
+- `limit`: 返回数量 (默认: 5)
+
+**响应**:
+
+```json
+{
+  "success": true,
+  "recipes": [
+    {
+      "id": "similar-recipe-id",
+      "name": "相似食谱名称",
+      "description": "食谱描述",
+      "cookingTime": 25,
+      "calories": 320,
+      "cuisineType": "中式",
+      "dietType": ["素食"],
+      "img": "https://example.com/path/to/image.jpg"
+    }
+  ],
+  "title": "相似食谱"
 }
 ```
 
@@ -511,5 +580,88 @@
       "totalItems": 1500
     }
   ]
+}
+```
+
+### 获取向量数据库状态
+
+**请求方法**: GET  
+**URL**: `/api/admin/vector-db/status`  
+**描述**: 获取向量数据库的当前状态  
+**认证要求**: 需要管理员权限
+
+**响应**:
+
+```json
+{
+  "success": true,
+  "status": "connected",
+  "recipeCount": 1250
+}
+```
+
+### 从 Excel 导入食谱
+
+**请求方法**: POST  
+**URL**: `/api/admin/recipes/import/excel`  
+**描述**: 从 Excel 文件导入食谱数据并向量化  
+**认证要求**: 需要管理员权限
+
+**请求体**:
+
+- `file`: Excel 文件 (FormData)
+
+**响应**:
+
+```json
+{
+  "success": true,
+  "message": "成功导入 42 个食谱，失败 3 个",
+  "data": {
+    "total": 45,
+    "success": 42,
+    "failed": 3,
+    "failures": [
+      {
+        "recipe": "失败的食谱名",
+        "error": "错误原因"
+      }
+    ]
+  }
+}
+```
+
+### 从 URL 导入食谱
+
+**请求方法**: POST  
+**URL**: `/api/admin/recipes/import/url`  
+**描述**: 从网页 URL 导入食谱数据并向量化  
+**认证要求**: 需要管理员权限
+
+**请求体**:
+
+```json
+{
+  "url": "https://example.com/recipes-page"
+}
+```
+
+**响应**:
+
+```json
+{
+  "success": true,
+  "message": "成功导入 15 个食谱，失败 2 个",
+  "data": {
+    "total": 17,
+    "success": 15,
+    "failed": 2,
+    "failures": [
+      {
+        "recipe": "失败的食谱名",
+        "error": "错误原因"
+      }
+    ]
+  }
 }
 ```

@@ -227,6 +227,14 @@ Content-Type: application/json
   "provider": "siliconflow"
 }
 
+### 获取今日推荐
+GET {{baseUrl}}/recommendations/today
+Authorization: Bearer {{auth_token}}
+
+### 获取相似食谱
+GET {{baseUrl}}/recommendations/similar/{{recipeId}}
+Authorization: Bearer {{auth_token}}
+
 ### 获取每日推荐
 POST {{baseUrl}}/recommendations/daily
 Authorization: Bearer {{auth_token}}

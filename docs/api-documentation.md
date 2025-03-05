@@ -320,7 +320,7 @@
 ### 获取今日推荐
 
 **请求方法**: GET  
-**URL**: `/api/recipes/recommendations/today`  
+**URL**: `/api/recommendations/today`  
 **描述**: 获取基于向量相似度的今日推荐食谱
 **认证要求**: 登录后能获得个性化推荐，未登录时提供通用推荐
 
@@ -334,7 +334,6 @@
 
 ```json
 {
-  "success": true,
   "recipes": [
     {
       "id": "recipe-id",
@@ -354,7 +353,7 @@
 ### 获取相似食谱
 
 **请求方法**: GET  
-**URL**: `/api/recipes/recommendations/similar/:recipeId`  
+**URL**: `/api/recommendations/similar/:recipeId`  
 **描述**: 根据指定的食谱 ID 查找相似的食谱
 
 **路径参数**:
@@ -369,7 +368,6 @@
 
 ```json
 {
-  "success": true,
   "recipes": [
     {
       "id": "similar-recipe-id",

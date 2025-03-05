@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { RecommendationService } from "../services/recommendation.service";
 import { ImageService } from "../services/image.service";
 import { checkPaymentMiddleware } from "../middlewares/auth";
+import { vectorRecommendationService } from "../services/vector-recommendation.service";
+import { qdrantService } from "../services/qdrant.service";
 
 const recommendationRoutes = new Hono();
 const recommendationService = new RecommendationService();
@@ -114,6 +116,50 @@ recommendationRoutes.post("/generate-image", async (c) => {
   } catch (error) {
     console.error("Error generating recipe image:", error);
     return c.json({ error: "Failed to generate image" }, 500);
+  }
+});
+
+// 今日推荐接口
+recommendationRoutes.get("/today", async (c) => {
+  try {
+    // 初始化向量数据库
+    await qdrantService.initialize();
+    
+    const limit = Number.parseInt(c.req.query('limit') || '10');
+    const page = Number.parseInt(c.req.query('page') || '1');
+    const userId = c.req.query('userId');
+    
+    // 获取推荐
+    const recommendations = await vectorRecommendationService.getDailyRecommendations({
+      userId,
+      limit,
+      page
+    });
+    
+    return c.json(recommendations);
+  } catch (error) {
+    console.error('获取今日推荐失败:', error);
+    return c.json({ error: "Failed to get today's recommendations" }, 500);
+  }
+});
+
+// 相似食谱查询接口
+recommendationRoutes.get("/similar/:recipeId", async (c) => {
+  try {
+    const recipeId = c.req.param('recipeId');
+    const limit = Number.parseInt(c.req.query('limit') || '5');
+    
+    if (!recipeId) {
+      return c.json({ error: "Recipe ID is required" }, 400);
+    }
+    
+    // 使用向量推荐服务获取相似食谱
+    const recommendations = await vectorRecommendationService.getSimilarRecipes(recipeId, limit);
+    
+    return c.json(recommendations);
+  } catch (error) {
+    console.error('获取相似食谱失败:', error);
+    return c.json({ error: "Failed to get similar recipes" }, 500);
   }
 });
 

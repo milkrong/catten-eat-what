@@ -1,8 +1,12 @@
-import { supabase } from '../config/supabase';
 import { embeddingService } from './embedding.service';
 import { qdrantService } from './qdrant.service';
 import type { DietaryPreferences } from '../types/preferences';
 import { RecipeService } from './recipe.service';
+
+// 导入 DrizzleORM 相关内容
+import { db } from '../config/db';
+import { eq, inArray } from 'drizzle-orm';
+import { recipes, preferences as userPreferences, favorites, type Recipe } from '../db/schema';
 
 // 创建RecipeService实例
 const recipeService = new RecipeService();
@@ -42,19 +46,30 @@ export class VectorRecommendationService {
       
       // 根据月份确定季节
       let season = '';
-      if (month >= 3 && month <= 5) season = '春季';
-      else if (month >= 6 && month <= 8) season = '夏季';
-      else if (month >= 9 && month <= 11) season = '秋季';
-      else season = '冬季';
+      if (month >= 3 && month <= 5) {
+        season = '春季';
+      } else if (month >= 6 && month <= 8) {
+        season = '夏季';
+      } else if (month >= 9 && month <= 11) {
+        season = '秋季';
+      } else {
+        season = '冬季';
+      }
       
       // 根据时间确定餐点
       const hour = now.getHours();
       let mealType = '';
-      if (hour >= 6 && hour < 10) mealType = '早餐';
-      else if (hour >= 10 && hour < 14) mealType = '午餐';
-      else if (hour >= 14 && hour < 17) mealType = '下午茶';
-      else if (hour >= 17 && hour < 21) mealType = '晚餐';
-      else mealType = '宵夜';
+      if (hour >= 6 && hour < 10) {
+        mealType = '早餐';
+      } else if (hour >= 10 && hour < 14) {
+        mealType = '午餐';
+      } else if (hour >= 14 && hour < 17) {
+        mealType = '下午茶';
+      } else if (hour >= 17 && hour < 21) {
+        mealType = '晚餐';
+      } else {
+        mealType = '宵夜';
+      }
       
       queryVector = await embeddingService.getContextBasedVector({
         season,
@@ -72,25 +87,21 @@ export class VectorRecommendationService {
     // 3. 根据搜索结果获取完整的食谱信息
     const recipeIds = searchResults.map(result => result.id);
     
-    const { data: recipes, error } = await supabase
-      .from('recipes')
-      .select('*')
-      .in('id', recipeIds);
-    
-    if (error) {
-      throw error;
-    }
+    // 使用 DrizzleORM 替换 Supabase 查询
+    const recipesData = await db.query.recipes.findMany({
+      where: inArray(recipes.id, recipeIds as string[])
+    });
     
     // 4. 应用饮食偏好过滤（如果有）
-    let filteredRecipes = recipes;
+    let filteredRecipes = recipesData;
     if (dietaryPreferences) {
-      filteredRecipes = this.filterRecipesByPreferences(recipes, dietaryPreferences);
+      filteredRecipes = this.filterRecipesByPreferences(recipesData, dietaryPreferences);
     }
     
     // 5. 按照原搜索结果的顺序排序
     const orderedRecipes = recipeIds
       .map(id => filteredRecipes.find(recipe => recipe.id === id))
-      .filter(recipe => recipe !== undefined) as any[];
+      .filter((recipe): recipe is Recipe => recipe !== undefined);
     
     return {
       recipes: orderedRecipes,
@@ -102,66 +113,63 @@ export class VectorRecommendationService {
    * 获取用户偏好向量
    */
   private async getUserPreferenceVector(userId: string): Promise<number[]> {
-    // 1. 获取用户偏好
-    const { data: preferences, error } = await supabase
-      .from('user_preferences')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    // 1. 获取用户偏好 - 使用 DrizzleORM
+    const preferencesData = await db.query.preferences.findFirst({
+      where: eq(userPreferences.id, userId)
+    });
     
-    if (error) {
+    if (!preferencesData) {
       // 没有找到用户偏好，使用默认上下文向量
       return await embeddingService.getContextBasedVector({});
     }
     
-    // 2. 获取用户最近喜欢的食谱
-    const { data: favoriteRecipes } = await supabase
-      .from('user_favorites')
-      .select('recipe_id')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    // 2. 获取用户最近喜欢的食谱 - 使用 DrizzleORM
+    const favoriteRecipesData = await db.query.favorites.findMany({
+      where: eq(favorites.userId, userId),
+      orderBy: (favorites, { desc }) => [desc(favorites.createdAt)],
+      limit: 5
+    });
     
     // 3. 构建用户偏好文本
     let preferenceText = '';
     
     // 添加饮食类型偏好
-    if (preferences.diet_type && preferences.diet_type.length > 0) {
-      preferenceText += `饮食类型: ${preferences.diet_type.join(', ')}. `;
+    if (preferencesData.dietType && preferencesData.dietType.length > 0) {
+      preferenceText += `饮食类型: ${preferencesData.dietType.join(', ')}. `;
     }
     
     // 添加菜系偏好
-    if (preferences.cuisine_type && preferences.cuisine_type.length > 0) {
-      preferenceText += `偏好菜系: ${preferences.cuisine_type.join(', ')}. `;
+    if (preferencesData.cuisineType && preferencesData.cuisineType.length > 0) {
+      preferenceText += `偏好菜系: ${preferencesData.cuisineType.join(', ')}. `;
     }
     
-    // 添加偏好的食材
-    if (preferences.favorite_ingredients && preferences.favorite_ingredients.length > 0) {
-      preferenceText += `喜欢的食材: ${preferences.favorite_ingredients.join(', ')}. `;
+    // 添加饮食限制
+    if (preferencesData.restrictions && preferencesData.restrictions.length > 0) {
+      preferenceText += `饮食限制: ${preferencesData.restrictions.join(', ')}. `;
     }
     
     // 添加过敏源
-    if (preferences.allergies && preferences.allergies.length > 0) {
-      preferenceText += `过敏源: ${preferences.allergies.join(', ')}. `;
+    if (preferencesData.allergies && preferencesData.allergies.length > 0) {
+      preferenceText += `过敏源: ${preferencesData.allergies.join(', ')}. `;
     }
     
     // 4. 获取偏好向量
     const userVector = await embeddingService.getEmbedding(preferenceText);
     
     // 5. 如果有最近喜欢的食谱，可以考虑混合这些向量
-    if (favoriteRecipes && favoriteRecipes.length > 0) {
-      const recipeIds = favoriteRecipes.map(fav => fav.recipe_id);
+    if (favoriteRecipesData && favoriteRecipesData.length > 0) {
+      const recipeIds = favoriteRecipesData.map(fav => fav.recipeId);
       
-      const { data: recipes } = await supabase
-        .from('recipes')
-        .select('*')
-        .in('id', recipeIds);
+      // 使用 DrizzleORM 查询
+      const recipesData = await db.query.recipes.findMany({
+        where: inArray(recipes.id, recipeIds as string[])
+      });
       
-      if (recipes && recipes.length > 0) {
+      if (recipesData && recipesData.length > 0) {
         // 为每个食谱获取向量，然后计算平均值
         const vectors: number[][] = [];
         
-        for (const recipe of recipes) {
+        for (const recipe of recipesData) {
           const recipeText = embeddingService.prepareRecipeText(recipe);
           const recipeVector = await embeddingService.getEmbedding(recipeText);
           vectors.push(recipeVector);
@@ -200,9 +208,9 @@ export class VectorRecommendationService {
    * 根据饮食偏好过滤食谱
    */
   private filterRecipesByPreferences(
-    recipes: any[],
+    recipes: Recipe[],
     preferences: DietaryPreferences
-  ): any[] {
+  ): Recipe[] {
     return recipes.filter(recipe => {
       // 过滤饮食类型
       if (
@@ -211,9 +219,11 @@ export class VectorRecommendationService {
         recipe.dietType
       ) {
         const hasMatchingDietType = preferences.dietType.some(dt =>
-          recipe.dietType.includes(dt)
+          recipe.dietType?.includes(dt)
         );
-        if (!hasMatchingDietType) return false;
+        if (!hasMatchingDietType) {
+          return false;
+        }
       }
       
       // 过滤菜系
@@ -225,7 +235,9 @@ export class VectorRecommendationService {
         const hasMatchingCuisine = preferences.cuisineType.includes(
           recipe.cuisineType
         );
-        if (!hasMatchingCuisine) return false;
+        if (!hasMatchingCuisine) {
+          return false;
+        }
       }
       
       // 过滤卡路里
@@ -261,7 +273,7 @@ export class VectorRecommendationService {
   /**
    * 获取相似食谱
    */
-  async getSimilarRecipes(recipeId: string, limit: number = 5): Promise<{ recipes: any[], title: string }> {
+  async getSimilarRecipes(recipeId: string, limit = 5): Promise<{ recipes: Recipe[]; title: string }> {
     try {
       // 1. 初始化向量数据库
       await qdrantService.initialize();
@@ -290,8 +302,10 @@ export class VectorRecommendationService {
           return result.id;
         });
       
-      // 6. 获取完整的食谱信息
-      const similarRecipes = await recipeService.getSimilarRecipes(similarRecipeIds);
+      // 6. 获取完整的食谱信息 - 使用 DrizzleORM
+      const similarRecipes = await db.query.recipes.findMany({
+        where: inArray(recipes.id, similarRecipeIds as string[])
+      });
       
       // 7. 按搜索结果顺序排序
       const orderedSimilarRecipes = similarRecipeIds

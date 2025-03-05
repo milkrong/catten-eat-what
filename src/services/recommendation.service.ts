@@ -1,8 +1,10 @@
 import { CozeService } from "./coze.service";
 import { OpenAIService } from "./openai-like.service";
+import { DifyService } from "./dify.service";
 import type {
   DietaryPreferences,
   RecommendationRequest,
+  LLMService,
 } from "../types/preferences";
 import type { Recipe, Ingredient, NutritionFacts } from "../types/recipe";
 import { supabase } from "../config/supabase";
@@ -23,10 +25,9 @@ type AiRecipe = Omit<
   ingredients: Ingredient[];
   nutritionFacts: NutritionFacts;
 };
-type AIProvider = "ark" | "coze" | "deepseek" | "siliconflow" | "custom";
 
 export interface UserSettings {
-  llm_service: AIProvider;
+  llm_service: LLMService;
   model_name?: string;
   is_paid?: boolean;
   api_key?: string;
@@ -38,6 +39,7 @@ export class RecommendationService {
   private deepseekService: OpenAIService;
   private siliconflowService: OpenAIService;
   private arkService: OpenAIService;
+  private difyService: DifyService;
   private customService: OpenAIService | null = null;
   private currentUserId: string | null = null;
 
@@ -61,6 +63,10 @@ export class RecommendationService {
       apiKey: process.env.ARK_API_KEY!,
       apiEndpoint: process.env.ARK_API_ENDPOINT!,
       model: process.env.ARK_MODEL!,
+    });
+    this.difyService = new DifyService({
+      apiKey: process.env.DIFY_API_KEY!,
+      apiEndpoint: process.env.DIFY_API_ENDPOINT!,
     });
   }
 
@@ -96,7 +102,7 @@ export class RecommendationService {
     }
   }
 
-  private async getAIService(provider: AIProvider = "coze", userId?: string) {
+  private async getAIService(provider: LLMService = "coze", userId?: string) {
     if (provider === "custom" && userId) {
       await this.initializeCustomService(userId);
       if (this.customService) {
@@ -112,6 +118,8 @@ export class RecommendationService {
         return this.siliconflowService;
       case "ark":
         return this.arkService;
+      case "dify":
+        return this.difyService;
       default:
         return this.cozeService;
     }
@@ -138,36 +146,44 @@ ${mealType ? `- 餐次类型: ${mealType}` : ""}
     const prompt = this.generatePrompt(request.preferences, request.mealType);
     const provider = request.provider || "coze";
 
-    if (provider !== "coze") {
-      const service = await this.getAIService(provider, request.userId);
-      const response = await (service as OpenAIService).createCompletion(
-        prompt
-      );
-      return this.parseAIResponse(response);
+    // Handle services based on the provider
+    switch (provider) {
+      case "coze": {
+        // Use Coze service
+        const chatResponse = await this.cozeService.createCompletion(
+          [{ role: "user", content: prompt }],
+          "recommendation-user",
+          {}
+        );
+
+        await this.cozeService.waitForCompletion(
+          chatResponse.data.conversation_id,
+          chatResponse.data.id
+        );
+
+        const answerMessage = await this.cozeService.getAnswerMessage(
+          chatResponse.data.conversation_id,
+          chatResponse.data.id
+        );
+
+        if (!answerMessage) {
+          throw new Error("No answer message found in response");
+        }
+
+        return this.parseAIResponse(answerMessage.content);
+      }
+      case "dify": {
+        // Use Dify service
+        const response = await this.difyService.createCompletion(prompt);
+        return this.parseAIResponse(response);
+      }
+      default: {
+        // Use other services
+        const service = await this.getAIService(provider, request.userId);
+        const response = await (service as OpenAIService).createCompletion(prompt);
+        return this.parseAIResponse(response);
+      }
     }
-
-    // Default to Coze service
-    const chatResponse = await this.cozeService.createCompletion(
-      [{ role: "user", content: prompt }],
-      "recommendation-user",
-      {}
-    );
-
-    await this.cozeService.waitForCompletion(
-      chatResponse.data.conversation_id,
-      chatResponse.data.id
-    );
-
-    const answerMessage = await this.cozeService.getAnswerMessage(
-      chatResponse.data.conversation_id,
-      chatResponse.data.id
-    );
-
-    if (!answerMessage) {
-      throw new Error("No answer message found in response");
-    }
-
-    return this.parseAIResponse(answerMessage.content);
   }
 
   private parseAIResponse(content: string): AiRecipe {
@@ -285,36 +301,52 @@ ${mealType ? `- 餐次类型: ${mealType}` : ""}
   async getStreamingRecommendation(
     request: RecommendationRequest,
     onChunk: (chunk: string) => void,
-    provider: AIProvider = "coze"
+    provider: LLMService = "coze"
   ): Promise<AiRecipe> {
     const prompt = this.generatePrompt(request.preferences, request.mealType);
     let fullResponse = "";
 
-    if (provider === "coze") {
-      await this.cozeService.createStreamCompletion(
-        [{ role: "user", content: prompt }],
-        (chunk) => {
-          console.log(">>1", chunk);
-          const content = chunk.choices[0]?.delta?.content;
-          if (content) {
-            fullResponse += content;
-            onChunk(content);
+    // Handle services based on the provider
+    switch (provider) {
+      case "coze": {
+        await this.cozeService.createStreamCompletion(
+          [{ role: "user", content: prompt }],
+          (chunk) => {
+            console.log(">>1", chunk);
+            const content = chunk.choices[0]?.delta?.content;
+            if (content) {
+              fullResponse += content;
+              onChunk(content);
+            }
+          },
+          "recommendation-user",
+          {
+            auto_save_history: false,
           }
-        },
-        "recommendation-user",
-        {
-          auto_save_history: false,
-        }
-      );
-    } else {
-      const service = await this.getAIService(provider, request.userId);
-      await (service as OpenAIService).createStreamingCompletion(
-        prompt,
-        (chunk) => {
-          fullResponse += chunk;
-          onChunk(chunk);
-        }
-      );
+        );
+        break;
+      }
+      case "dify": {
+        await this.difyService.createStreamingCompletion(
+          prompt,
+          (chunk) => {
+            fullResponse += chunk;
+            onChunk(chunk);
+          }
+        );
+        break;
+      }
+      default: {
+        const service = await this.getAIService(provider, request.userId);
+        await (service as OpenAIService).createStreamingCompletion(
+          prompt,
+          (chunk) => {
+            fullResponse += chunk;
+            onChunk(chunk);
+          }
+        );
+        break;
+      }
     }
 
     return this.parseAIResponse(fullResponse);
@@ -323,7 +355,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ""}
   async getStreamingSingleMealRecommendation(
     request: RecommendationRequest,
     onChunk: (chunk: string) => void,
-    provider: AIProvider = "coze"
+    provider: LLMService = "coze"
   ): Promise<AiRecipe> {
     return this.getStreamingRecommendation(request, onChunk, provider);
   }
@@ -331,7 +363,7 @@ ${mealType ? `- 餐次类型: ${mealType}` : ""}
   async getStreamingDailyPlanRecommendation(
     request: RecommendationRequest,
     onChunk: (chunk: string) => void,
-    provider: AIProvider = "coze"
+    provider: LLMService = "coze"
   ): Promise<AiRecipe[]> {
     const meals = [];
     const mealTypes = ["breakfast", "lunch", "dinner"];
